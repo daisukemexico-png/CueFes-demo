@@ -325,7 +325,13 @@
     --print-border:#cccccc; --print-tick:#333333;
     -webkit-print-color-adjust:exact; print-color-adjust:exact; color-adjust:exact;
   }
-  .print-output .print-page{ background:var(--print-bg); }
+  .print-output .print-page{ background:var(--print-bg); position:relative; }
+  .print-watermark{
+    position:absolute; right:14px; bottom:10px; display:flex; align-items:center; gap:5px;
+    opacity:.55; pointer-events:none;
+  }
+  .print-watermark img{ height:14px; width:auto; }
+  .print-watermark span{ font-size:9px; color:#555; white-space:nowrap; }
   .print-output .print-title{ font-size:17px; font-weight:bold; margin-bottom:2px; color:var(--print-title); }
   .print-output .print-sub{ font-size:11px; color:var(--print-sub); margin-bottom:10px; }
   .print-output .gantt-v .lane{ border-left:1px solid var(--print-border); }
@@ -952,13 +958,6 @@
 
   <!-- ============ TAB: STAFF/BACKSTAGE SCHEDULE ============ -->
   <div class="tabcontent" id="tab-staffschedule">
-    <div class="premium-gate" data-premium-feature="staff-schedule">
-      <div class="premium-locked-overlay">
-        <h3>進行表 <span class="premium-badge">PREMIUM</span></h3>
-        <p>舞台監督・音響など担当ごとの裏方進行表を作成する機能です。プレミアムプランでご利用いただけます。</p>
-        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
-      </div>
-      <div class="premium-content">
     <div class="card">
       <h2>進行表（裏方タイムスケジュール）</h2>
       <p class="helptext">
@@ -989,10 +988,9 @@
     <div class="card">
       <h2>Excelで出力する</h2>
       <p class="helptext">DAYごとに1シートずつ、担当を列にした進行表をExcelファイル（.xlsx）として書き出します。アーティストの出演スケジュール（⑥PDF出力タブのExcel出力）とは別のファイルになります。</p>
+      <p class="helptext" id="staffXlsxWatermarkNote" style="display:none;">無料版では、各シートの上部に「CueFesで作成」の透かし行が入ります。<a href="#" data-open-premium-modal>プレミアムにアップグレード</a>すると透かしなしで出力できます。</p>
       <button class="btn secondary" id="btnExportStaffXlsx" style="font-size:15px;padding:12px 22px;">進行表をExcelで保存する</button>
       <div class="helptext" id="staffXlsxStatus" style="margin-top:8px;"></div>
-    </div>
-      </div>
     </div>
   </div>
 
@@ -3539,6 +3537,18 @@
     `;
   }
 
+  // DEMO BUILD: free-tier watermark on the basic PDF output (the one output
+  // that stays fully usable without a premium unlock). Reuses the same
+  // embedded logo already in the header, so no extra image asset is needed.
+  function addPrintWatermarkIfFree(pageEl){
+    if(typeof isPremiumUnlocked === "function" && isPremiumUnlocked()) return;
+    const logoImg = document.getElementById("hdrTitle");
+    const wm = document.createElement("div");
+    wm.className = "print-watermark";
+    wm.innerHTML = `${logoImg ? `<img src="${logoImg.src}" alt="CueFes">` : ""}<span>Made with CueFes（無料版）</span>`;
+    pageEl.appendChild(wm);
+  }
+
   function buildPrintArea(){
     const area = document.getElementById("print-area");
     area.innerHTML = "";
@@ -3569,6 +3579,7 @@
       const gantt = document.createElement("div");
       gantt.className = "gantt-v-wrap";
       p.appendChild(h); p.appendChild(sub); p.appendChild(gantt);
+      addPrintWatermarkIfFree(p);
       area.appendChild(p);
       return gantt;
     }
@@ -3835,6 +3846,7 @@
       }
 
       const lanes = state.staffLanes;
+      const isFree = typeof isPremiumUnlocked === "function" ? !isPremiumUnlocked() : false;
       days.forEach((day, dayIdx)=>{
         const sheetName = uniqueSheetName(day.label+"進行表");
         const sheet = dayIdx===0 ? workbook.sheet(0).name(sheetName) : workbook.addSheet(sheetName);
@@ -3846,13 +3858,27 @@
         let breakpoints = Array.from(new Set(mins)).sort((x,y)=>x-y);
         if(breakpoints.length<2) breakpoints = [breakpoints[0], breakpoints[0]+60];
 
-        const headerCell = sheet.cell(1,1);
+        // Row 1 is always reserved for this (structure stays identical either
+        // way, avoiding conditional row-index math below). Free tier: a
+        // watermark note. Premium: left blank.
+        const wmCell = sheet.cell(1,1);
+        if(isFree){
+          wmCell.value("CueFesで作成（無料版） — プレミアムでこの表示を消せます");
+          safeStyle(wmCell, "italic", true);
+          safeStyle(wmCell, "fontColor", "999999");
+        }
+        try{
+          if(lanes.length>0) sheet.range(1,1,1,1+lanes.length).merged(true);
+          sheet.row(1).height(isFree ? 16 : 6);
+        }catch(e){/* noop */}
+
+        const headerCell = sheet.cell(2,1);
         headerCell.value("時刻");
         safeStyle(headerCell, "bold", true);
         safeStyle(headerCell, "fill", "DDDDDD");
         sheet.column(1).width(14);
         lanes.forEach((lane, li)=>{
-          const c = sheet.cell(1, 2+li);
+          const c = sheet.cell(2, 2+li);
           c.value(lane.name);
           safeStyle(c, "bold", true);
           safeStyle(c, "fill", "DDDDDD");
@@ -3860,7 +3886,7 @@
         });
 
         for(let i=0;i<breakpoints.length-1;i++){
-          const rowIdx = 2+i;
+          const rowIdx = 3+i;
           const t0 = breakpoints[i], t1 = breakpoints[i+1];
           const timeCell = sheet.cell(rowIdx,1);
           timeCell.value(minToTime(t0)+"–"+minToTime(t1));
@@ -3875,7 +3901,7 @@
               const s = timeToMin(t.start), e = timeToMin(t.end);
               const startIdx = breakpoints.indexOf(s), endIdx = breakpoints.indexOf(e);
               if(startIdx===-1 || endIdx===-1 || endIdx<=startIdx) return;
-              const rowStart = 2+startIdx, rowEnd = 2+endIdx-1;
+              const rowStart = 3+startIdx, rowEnd = 3+endIdx-1;
               const cell = sheet.cell(rowStart, col);
               cell.value(t.label+"\n"+t.start+"–"+t.end+(t.memo?"\n"+t.memo:""));
               if(rowEnd>rowStart) sheet.range(rowStart,col,rowEnd,col).merged(true);
@@ -3887,7 +3913,7 @@
           });
         });
 
-        try{ sheet.range(1,1,1+breakpoints.length-1, 1+lanes.length).style("border", true); }catch(e){/* noop */}
+        try{ sheet.range(2,1,2+breakpoints.length-1, 1+lanes.length).style("border", true); }catch(e){/* noop */}
       });
 
       const blob = await workbook.outputAsync();
@@ -4678,6 +4704,8 @@
     document.querySelectorAll(".premium-gate").forEach(el=>{
       el.classList.toggle("locked", !unlocked);
     });
+    const wmNote = document.getElementById("staffXlsxWatermarkNote");
+    if(wmNote) wmNote.style.display = unlocked ? "none" : "block";
   }
   function renderPremiumModal(){
     const unlocked = isPremiumUnlocked();

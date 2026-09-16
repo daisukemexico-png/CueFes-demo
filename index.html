@@ -234,6 +234,26 @@
   .onboarding-check{font-weight:700;width:16px;text-align:center;color:var(--accent2);flex:0 0 auto;}
   .empty-state-cta{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;}
 
+  /* ---------- Premium feature gate (DEMO BUILD ONLY) ---------- */
+  .premium-badge{
+    display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;
+    color:#8f1149;background:#b3185a1a;border:1px solid #b3185a55;border-radius:10px;
+    padding:2px 9px;margin-left:8px;vertical-align:middle;
+  }
+  .premium-gate .premium-locked-overlay{ display:none; }
+  .premium-gate.locked .premium-content{ display:none; }
+  .premium-gate.locked .premium-locked-overlay{
+    display:flex;flex-direction:column;align-items:flex-start;gap:10px;
+    border:1px dashed var(--accent);border-radius:12px;padding:22px 20px;background:#b3185a08;
+  }
+  .premium-locked-overlay h3{ margin:0;color:var(--accent-ink);font-size:15px; }
+  .premium-locked-overlay p{ margin:0;color:var(--muted);font-size:12.5px;line-height:1.7; }
+  #premiumModal .modal-box{ max-width:420px; }
+  #premiumModal .premium-unlocked-box{
+    background:var(--accent2-soft);border:1px solid var(--accent2);border-radius:10px;
+    padding:12px 14px;font-size:13px;color:var(--text);
+  }
+
   /* ==========================================================================
      Touch / tablet / phone support.
      Pointer Events (already used for all drag logic) work natively across
@@ -385,6 +405,39 @@
     <p class="helptext" style="margin-top:10px;">文字入力欄にカーソルがあるときは、Delete/Backspace/Ctrl+Zはこの早見表の動作をせず、通常のテキスト編集として扱われます。</p>
     <div class="row" style="margin-top:14px;justify-content:flex-end;">
       <button class="btn" id="shortcutHelpClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="premiumModal">
+  <div class="modal-box">
+    <h3>プレミアム機能</h3>
+    <div id="premiumModalLocked">
+      <p class="helptext">
+        PDFの色味カスタマイズ・PNG出力・Excel出力、⑧アーティストマスタ・⑨出演者連絡シート・⑩進行表は、プレミアムプランの機能です。
+      </p>
+      <div class="row" style="margin:12px 0;">
+        <a class="btn" id="premiumBuyLink" href="#" target="_blank" rel="noopener">プレミアムを購入する</a>
+      </div>
+      <p class="helptext">すでに購入済みの方は、決済時に使ったメールアドレスを入力して確認してください。</p>
+      <label>購入時のメールアドレス</label>
+      <input type="email" id="premiumEmailInput" placeholder="example@example.com">
+      <div class="row" style="margin-top:10px;">
+        <button class="btn secondary" id="btnPremiumVerify">確認する</button>
+      </div>
+      <div class="helptext" id="premiumCheckStatus" style="margin-top:8px;"></div>
+    </div>
+    <div id="premiumModalUnlocked" style="display:none;">
+      <div class="premium-unlocked-box">
+        ✓ プレミアム機能が有効です<br>
+        <span id="premiumUnlockedEmail" style="color:var(--muted);font-size:12px;"></span>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn ghost" id="btnPremiumLogout">このメールアドレスの登録を解除する</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end;">
+      <button class="btn" id="premiumModalClose">閉じる</button>
     </div>
   </div>
 </div>
@@ -728,6 +781,13 @@
       <button class="btn" id="btnPrint" style="font-size:15px;padding:12px 22px;">タイムテーブルPDFを出力する</button>
     </div>
 
+    <div class="premium-gate" data-premium-feature="png-export">
+      <div class="premium-locked-overlay">
+        <h3>PNG画像出力 <span class="premium-badge">PREMIUM</span></h3>
+        <p>背景透明のPNG画像として出力する機能は、プレミアムプランでご利用いただけます。フライヤーのデザインデータにタイムテーブルを重ねて配置したい場合などに便利です。</p>
+        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
+      </div>
+      <div class="premium-content">
     <div class="card">
       <h2>PNG画像として出力</h2>
       <p class="helptext">
@@ -738,7 +798,16 @@
       <button class="btn secondary" id="btnExportPng" style="font-size:15px;padding:12px 22px;">PNG画像で保存する</button>
       <div class="helptext" id="pngExportStatus" style="margin-top:8px;"></div>
     </div>
+      </div>
+    </div>
 
+    <div class="premium-gate" data-premium-feature="xlsx-export">
+      <div class="premium-locked-overlay">
+        <h3>Excel出力 <span class="premium-badge">PREMIUM</span></h3>
+        <p>時間軸どおりのガント形式でExcelファイルを書き出す機能は、プレミアムプランでご利用いただけます。既存のExcel運用と組み合わせたい場合などに便利です。</p>
+        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
+      </div>
+      <div class="premium-content">
     <div class="card">
       <h2>Excelファイルとして出力</h2>
       <p class="helptext">
@@ -748,7 +817,16 @@
       <button class="btn secondary" id="btnExportXlsx" style="font-size:15px;padding:12px 22px;">Excelファイルを保存する</button>
       <div class="helptext" id="xlsxExportStatus" style="margin-top:8px;"></div>
     </div>
+      </div>
+    </div>
 
+    <div class="premium-gate" data-premium-feature="print-style">
+      <div class="premium-locked-overlay">
+        <h3>出力の色味カスタマイズ <span class="premium-badge">PREMIUM</span></h3>
+        <p>配布用フライヤーの色味に合わせた出力デザインのカスタマイズは、プレミアムプランでご利用いただけます。</p>
+        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
+      </div>
+      <div class="premium-content">
     <div class="card">
       <h2>出力の色味（デザイン）</h2>
       <p class="helptext">配布用フライヤーの色味に合わせて、出力するタイムテーブルの背景色や見出し色などを変更できます。プリセットから選んだ上で、下の各項目を個別に調整することもできます。設定はイベントデータの一部として保存され、バックアップにも含まれます。</p>
@@ -759,6 +837,8 @@
       <div class="colorfield-grid" id="printColorFields"></div>
       <div id="printPreview"></div>
     </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ TAB: STATS (動員数・チケット売上・イベンター好感度の集計) ============ -->
@@ -768,6 +848,13 @@
 
   <!-- ============ TAB: ARTIST MASTER ============ -->
   <div class="tabcontent" id="tab-master">
+    <div class="premium-gate" data-premium-feature="artist-master">
+      <div class="premium-locked-overlay">
+        <h3>アーティストマスタ <span class="premium-badge">PREMIUM</span></h3>
+        <p>イベントをまたいで使う名簿から、今のイベントへワンクリックで一括ブッキングできる機能です。プレミアムプランでご利用いただけます。</p>
+        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
+      </div>
+      <div class="premium-content">
     <div class="card">
       <h2>アーティストマスタ</h2>
       <p class="helptext">
@@ -808,10 +895,19 @@
     <div class="card">
       <div id="artistMasterWrap"></div>
     </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ TAB: CONTACT SHEET (per-artist notice for managers) ============ -->
   <div class="tabcontent" id="tab-contactsheet">
+    <div class="premium-gate" data-premium-feature="contact-sheet">
+      <div class="premium-locked-overlay">
+        <h3>出演者連絡シート <span class="premium-badge">PREMIUM</span></h3>
+        <p>楽屋・入り時間・出演時間をまとめた、マネージャー様宛の連絡文を自動作成する機能です。プレミアムプランでご利用いただけます。</p>
+        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
+      </div>
+      <div class="premium-content">
     <div class="card">
       <h2>出演者連絡シート</h2>
       <p class="helptext">
@@ -850,10 +946,19 @@
         本文中の時刻・楽屋などは、上のたたき台作成時点の内容がそのままテキストとして入っています。タイムテーブル側を後から変更した場合は、「たたき台を作り直す」を押すか、この欄を直接編集してください。
       </div>
     </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ TAB: STAFF/BACKSTAGE SCHEDULE ============ -->
   <div class="tabcontent" id="tab-staffschedule">
+    <div class="premium-gate" data-premium-feature="staff-schedule">
+      <div class="premium-locked-overlay">
+        <h3>進行表 <span class="premium-badge">PREMIUM</span></h3>
+        <p>舞台監督・音響など担当ごとの裏方進行表を作成する機能です。プレミアムプランでご利用いただけます。</p>
+        <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
+      </div>
+      <div class="premium-content">
     <div class="card">
       <h2>進行表（裏方タイムスケジュール）</h2>
       <p class="helptext">
@@ -886,6 +991,8 @@
       <p class="helptext">DAYごとに1シートずつ、担当を列にした進行表をExcelファイル（.xlsx）として書き出します。アーティストの出演スケジュール（⑥PDF出力タブのExcel出力）とは別のファイルになります。</p>
       <button class="btn secondary" id="btnExportStaffXlsx" style="font-size:15px;padding:12px 22px;">進行表をExcelで保存する</button>
       <div class="helptext" id="staffXlsxStatus" style="margin-top:8px;"></div>
+    </div>
+      </div>
     </div>
   </div>
 
@@ -4530,6 +4637,119 @@
   document.getElementById("shortcutHelpModal").addEventListener("click", e=>{
     if(e.target.id === "shortcutHelpModal") document.getElementById("shortcutHelpModal").style.display = "none";
   });
+
+  // ==========================================================================
+  // Premium feature gate (DEMO BUILD ONLY — not present in the production
+  // build). Free: ①〜⑤ and basic PDF output. Premium: PDF color customization,
+  // PNG export, Excel export, ⑧アーティストマスタ, ⑨出演者連絡シート, ⑩進行表.
+  //
+  // "License key" = the email address used at Stripe checkout. A Cloudflare
+  // Worker (deployed separately — see the accompanying setup guide) checks
+  // that email against Stripe's own customer/payment records server-side
+  // (using a Stripe secret key that never reaches the browser) and returns
+  // {valid: true/false}. Once verified, the email is cached in localStorage
+  // so the gate stays unlocked on this device without re-checking every load.
+  //
+  // TODO before this is a real, working paywall: replace both placeholder
+  // URLs below with your actual deployed Worker URL and Stripe Payment Link.
+  // Until then, verification will fail safely (network/HTTP error -> stays
+  // locked) rather than silently unlocking.
+  // ==========================================================================
+  const PREMIUM_CONFIG = {
+    workerUrl: "https://YOUR-WORKER-SUBDOMAIN.workers.dev/verify-license", // TODO: replace after deploying the Cloudflare Worker
+    stripePaymentLinkUrl: "https://buy.stripe.com/REPLACE_ME" // TODO: replace with your real Stripe Payment Link
+  };
+  const PREMIUM_EMAIL_KEY = "cuefes_premium_email_demo";
+
+  function isPremiumUnlocked(){
+    try{ return !!localStorage.getItem(PREMIUM_EMAIL_KEY); }catch(e){ return false; }
+  }
+  function getPremiumEmail(){
+    try{ return localStorage.getItem(PREMIUM_EMAIL_KEY) || ""; }catch(e){ return ""; }
+  }
+  function setPremiumUnlocked(email){
+    try{ localStorage.setItem(PREMIUM_EMAIL_KEY, email); }catch(e){ /* ignore */ }
+  }
+  function clearPremiumUnlock(){
+    try{ localStorage.removeItem(PREMIUM_EMAIL_KEY); }catch(e){ /* ignore */ }
+  }
+  function applyPremiumGates(){
+    const unlocked = isPremiumUnlocked();
+    document.querySelectorAll(".premium-gate").forEach(el=>{
+      el.classList.toggle("locked", !unlocked);
+    });
+  }
+  function renderPremiumModal(){
+    const unlocked = isPremiumUnlocked();
+    document.getElementById("premiumModalLocked").style.display = unlocked ? "none" : "block";
+    document.getElementById("premiumModalUnlocked").style.display = unlocked ? "block" : "none";
+    if(unlocked){
+      document.getElementById("premiumUnlockedEmail").textContent = getPremiumEmail();
+    } else {
+      document.getElementById("premiumCheckStatus").textContent = "";
+    }
+    const buyLink = document.getElementById("premiumBuyLink");
+    if(buyLink) buyLink.href = PREMIUM_CONFIG.stripePaymentLinkUrl;
+  }
+  async function verifyPremiumLicense(email){
+    const statusEl = document.getElementById("premiumCheckStatus");
+    email = (email||"").trim();
+    if(!email){ if(statusEl) statusEl.textContent = "メールアドレスを入力してください。"; return; }
+    if(statusEl) statusEl.textContent = "確認中…";
+    const verifyBtn = document.getElementById("btnPremiumVerify");
+    if(verifyBtn) verifyBtn.disabled = true;
+    try{
+      const res = await fetch(PREMIUM_CONFIG.workerUrl, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({email})
+      });
+      if(!res.ok) throw new Error("http "+res.status);
+      const data = await res.json();
+      if(data && data.valid){
+        setPremiumUnlocked(email);
+        applyPremiumGates();
+        renderPremiumModal();
+      } else {
+        if(statusEl) statusEl.textContent = "このメールアドレスでの購入が確認できませんでした。購入時と同じメールアドレスを入力してください。";
+      }
+    }catch(e){
+      if(statusEl) statusEl.textContent = "確認中にエラーが発生しました。インターネット接続をご確認のうえ、もう一度お試しください。";
+    }finally{
+      if(verifyBtn) verifyBtn.disabled = false;
+    }
+  }
+  function openPremiumModal(){
+    renderPremiumModal();
+    document.getElementById("premiumModal").style.display = "flex";
+  }
+  function closePremiumModal(){
+    document.getElementById("premiumModal").style.display = "none";
+  }
+  document.addEventListener("click", e=>{
+    if(e.target.closest("[data-open-premium-modal]")){
+      e.preventDefault();
+      openPremiumModal();
+    }
+  });
+  document.getElementById("premiumModalClose").addEventListener("click", closePremiumModal);
+  document.getElementById("premiumModal").addEventListener("click", e=>{
+    if(e.target.id === "premiumModal") closePremiumModal();
+  });
+  document.getElementById("btnPremiumVerify").addEventListener("click", ()=>{
+    verifyPremiumLicense(document.getElementById("premiumEmailInput").value);
+  });
+  document.getElementById("premiumEmailInput").addEventListener("keydown", ev=>{
+    if(ev.key==="Enter"){ ev.preventDefault(); verifyPremiumLicense(document.getElementById("premiumEmailInput").value); }
+  });
+  document.getElementById("btnPremiumLogout").addEventListener("click", ()=>{
+    if(!confirm("このメールアドレスの登録を解除しますか？プレミアム機能が再びロックされます。")) return;
+    clearPremiumUnlock();
+    applyPremiumGates();
+    renderPremiumModal();
+  });
+  applyPremiumGates();
+
   document.getElementById("btnAdminToggle").addEventListener("click", ()=>{
     if(adminUnlocked){
       adminUnlocked = false;

@@ -982,27 +982,32 @@
   // separate from STORAGE_KEY. That's what lets it survive "全データ削除" (which
   // only resets `state`) and carry booking-relevant numbers forward from one
   // event to the next, keyed by artist name.
-  // DEMO BUILD: seed a matching history so "⑦実績集計" → 通算実績 shows data
-  // immediately, without waiting for syncArtistHistoryFromCurrentEvent() to
-  // run on a first save. Mirrors the same audience/ticketSales/favorability
-  // as the sample artists in defaultState(), plus one extra past event so the
-  // cross-event ranking (通算出演回数, 直近出演) has something to show.
+  // DEMO BUILD: seed a matching history so "⑦実績集計" → 通算実績 and the new
+  // trend/comparison charts show meaningful data immediately, without waiting
+  // for syncArtistHistoryFromCurrentEvent() to run on a first save. Includes
+  // a couple of past circuit events (beyond the two seeded DAYs) so the
+  // artist trend line chart and the event-comparison bar chart both have
+  // more than two points to actually show a trend.
   function demoSeedArtistHistory(){
     const ev = "サンプルフェス2026";
-    const mk = (day, date, name, audience, ticketSales, favorability, ts) => ({
-      id: uid(), _key: ev+"‖"+day+"‖"+name, artistName: name, eventName: ev,
+    const mk = (event, day, date, name, audience, ticketSales, favorability, ts) => ({
+      id: uid(), _key: event+"‖"+day+"‖"+name, artistName: name, eventName: event,
       dayLabel: day, dayDate: date, audience, ticketSales, favorability, updatedAt: ts
     });
     return [
-      mk("DAY1","2026-04-01","サンプル☆ガールズ","120","45000","4", 1),
-      mk("DAY1","2026-04-01","キラキラユニット","95","38000","5", 1),
-      mk("DAY1","2026-04-01","ネオン戦隊","150","60000","3", 1),
-      mk("DAY1","2026-04-01","妖精計画","80","30000","4", 1),
-      mk("DAY2","2026-04-02","サンプル☆ガールズ","130","48000","4", 2),
-      mk("DAY2","2026-04-02","新人ユニットX","40","12000","3", 2),
-      { id: uid(), _key: "サークルサンプル前回イベント‖DAY1‖サンプル☆ガールズ", artistName:"サンプル☆ガールズ",
-        eventName:"サークルサンプル前回イベント", dayLabel:"DAY1", dayDate:"2026-01-11",
-        audience:"100", ticketSales:"40000", favorability:"4", updatedAt: 0 }
+      // Two past circuit events, so trends/comparisons have real history.
+      mk("サークル前々回イベント","DAY1","2025-11-02","サンプル☆ガールズ","90","32000","4", -2),
+      mk("サークル前々回イベント","DAY1","2025-11-02","キラキラユニット","70","25000","4", -2),
+      mk("サークル前回イベント","DAY1","2026-01-11","サンプル☆ガールズ","100","40000","4", -1),
+      mk("サークル前回イベント","DAY1","2026-01-11","キラキラユニット","85","31000","4", -1),
+      mk("サークル前回イベント","DAY1","2026-01-11","ネオン戦隊","110","42000","3", -1),
+      // This event (matches the seeded artists in defaultState()).
+      mk(ev,"DAY1","2026-04-01","サンプル☆ガールズ","120","45000","4", 1),
+      mk(ev,"DAY1","2026-04-01","キラキラユニット","95","38000","5", 1),
+      mk(ev,"DAY1","2026-04-01","ネオン戦隊","150","60000","3", 1),
+      mk(ev,"DAY1","2026-04-01","妖精計画","80","30000","4", 1),
+      mk(ev,"DAY2","2026-04-02","サンプル☆ガールズ","130","48000","4", 2),
+      mk(ev,"DAY2","2026-04-02","新人ユニットX","40","12000","3", 2)
     ];
   }
   function loadArtistHistory(){
@@ -3731,6 +3736,179 @@
       <div id="artistHistoryWrap"></div>`;
     wrap.appendChild(historyCard);
     renderArtistHistorySection(historyCard.querySelector("#artistHistoryWrap"));
+
+    const chartsCard = document.createElement("div");
+    chartsCard.className = "card";
+    chartsCard.innerHTML = `
+      <h2>グラフで見る（推移・イベント間の比較）</h2>
+      <div class="helptext" style="margin-top:-6px;margin-bottom:10px;">
+        上の通算実績データベースをもとに、アーティスト個別の動員数・チケット売上の推移や、イベントをまたいだ動員数の比較をグラフで確認できます。
+      </div>
+      <div id="artistHistoryChartsWrap"></div>`;
+    wrap.appendChild(chartsCard);
+    renderArtistHistoryCharts(chartsCard.querySelector("#artistHistoryChartsWrap"));
+  }
+
+  // Remembers the selected artist across re-renders (renderStatsTab rebuilds
+  // the whole tab's DOM from scratch each time, so this can't live on the
+  // element itself the way e.g. scroll position might).
+  let selectedTrendArtistName = null;
+
+  function renderArtistHistoryCharts(container){
+    if(!container) return;
+    const names = Array.from(new Set(artistHistory.map(h=>h.artistName))).sort((a,b)=>a.localeCompare(b,"ja"));
+    if(selectedTrendArtistName==null || !names.includes(selectedTrendArtistName)){
+      selectedTrendArtistName = names[0] || "";
+    }
+    container.innerHTML = `
+      <div class="row" style="align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <label style="margin:0;white-space:nowrap;">アーティストの推移を見る</label>
+        <select id="historyChartArtistSelect" style="width:auto;min-width:180px;">
+          ${names.length ? names.map(n=>`<option value="${escapeAttr(n)}" ${n===selectedTrendArtistName?"selected":""}>${escapeHtml(n)}</option>`).join("") : `<option value="">（データなし）</option>`}
+        </select>
+      </div>
+      <div id="historyChartArtistArea"></div>
+      <h3 style="margin-top:22px;margin-bottom:8px;font-size:14px;color:var(--text);">イベント別 動員数の比較（全アーティスト合計・開催日順）</h3>
+      <div id="historyChartEventArea"></div>
+    `;
+    const select = container.querySelector("#historyChartArtistSelect");
+    select.addEventListener("change", ()=>{
+      selectedTrendArtistName = select.value;
+      renderArtistTrendCharts(container.querySelector("#historyChartArtistArea"), selectedTrendArtistName);
+    });
+    renderArtistTrendCharts(container.querySelector("#historyChartArtistArea"), selectedTrendArtistName);
+    renderEventTotalsChart(container.querySelector("#historyChartEventArea"));
+  }
+
+  // Sorted chronologically (oldest -> newest) by dayDate so the line chart
+  // reads left-to-right as a timeline; entries without a date fall back to
+  // updatedAt order and are appended after any dated entries.
+  function renderArtistTrendCharts(area, artistName){
+    if(!area) return;
+    if(!artistName){
+      area.innerHTML = `<div class="helptext">まだ実績データがありません。②DAY・時間設定・③アーティスト管理で動員数などを入力すると、ここに表示されます。</div>`;
+      return;
+    }
+    const entries = artistHistory.filter(h=>h.artistName===artistName).slice().sort((a,b)=>{
+      if(a.dayDate && b.dayDate && a.dayDate!==b.dayDate) return a.dayDate<b.dayDate ? -1 : 1;
+      if(a.dayDate && !b.dayDate) return -1;
+      if(!a.dayDate && b.dayDate) return 1;
+      return (a.updatedAt||0)-(b.updatedAt||0);
+    });
+    const labelFor = e => (e.dayDate||"日付未設定")+" "+e.eventName+(e.dayLabel?"（"+e.dayLabel+"）":"");
+    const audPoints = entries.map(e=>({ label:labelFor(e), value: parseInt(e.audience,10)||0 }));
+    const salesPoints = entries.map(e=>({ label:labelFor(e), value: parseInt(e.ticketSales,10)||0 }));
+    const hasAud = audPoints.some(p=>p.value>0);
+    const hasSales = salesPoints.some(p=>p.value>0);
+    area.innerHTML = `
+      <div class="grid cols2">
+        <div>
+          <label style="font-size:12px;">動員数の推移</label>
+          ${hasAud ? buildLineChartSVG(audPoints, {color:"var(--accent2)", formatValue:v=>v.toLocaleString()+"人"}) : `<div class="helptext">「${escapeHtml(artistName)}」の動員数データがまだありません</div>`}
+        </div>
+        <div>
+          <label style="font-size:12px;">チケット売上の推移</label>
+          ${hasSales ? buildLineChartSVG(salesPoints, {color:"var(--accent)", formatValue:v=>"¥"+v.toLocaleString()}) : `<div class="helptext">「${escapeHtml(artistName)}」のチケット売上データがまだありません</div>`}
+        </div>
+      </div>`;
+  }
+
+  // Groups every history entry by event name (summing audience across every
+  // artist and DAY within that event), so the bar chart shows whether the
+  // circuit/series as a whole is drawing more or fewer people over time.
+  // Sorted by each event's earliest recorded date; undated events are pushed
+  // to the end rather than sorted arbitrarily.
+  function renderEventTotalsChart(area){
+    if(!area) return;
+    const map = new Map();
+    artistHistory.forEach(h=>{
+      if(!map.has(h.eventName)) map.set(h.eventName, {sum:0, minDate:null});
+      const g = map.get(h.eventName);
+      const aud = parseInt(h.audience,10);
+      if(!isNaN(aud)) g.sum += aud;
+      if(h.dayDate && (!g.minDate || h.dayDate<g.minDate)) g.minDate = h.dayDate;
+    });
+    const points = Array.from(map.entries()).map(([eventName,g])=>({label:eventName, value:g.sum, date:g.minDate}));
+    points.sort((a,b)=>{
+      if(a.date && b.date && a.date!==b.date) return a.date<b.date ? -1 : 1;
+      if(a.date && !b.date) return -1;
+      if(!a.date && b.date) return 1;
+      return a.label.localeCompare(b.label,"ja");
+    });
+    if(points.length===0){
+      area.innerHTML = `<div class="helptext">まだ実績データがありません。</div>`;
+      return;
+    }
+    area.innerHTML = buildBarChartSVG(points, {color:"var(--accent)", formatValue:v=>v.toLocaleString()+"人"});
+  }
+
+  // ---------- Lightweight inline SVG charts (no external library / CDN needed) ----------
+  function truncateLabel(s, n){ s=String(s); return s.length>n ? s.slice(0,n-1)+"…" : s; }
+  function buildLineChartSVG(points, opts){
+    opts = opts || {};
+    const width = opts.width || 520, height = opts.height || 170;
+    const padL = 50, padR = 14, padT = 14, padB = 30;
+    const innerW = width-padL-padR, innerH = height-padT-padB;
+    const values = points.map(p=>p.value);
+    const maxV = Math.max(...values, 1);
+    const minV = Math.min(...values, 0);
+    const range = (maxV-minV) || 1;
+    const n = points.length;
+    const x = i => n<=1 ? padL+innerW/2 : padL + (innerW*i/(n-1));
+    const y = v => padT + innerH - ((v-minV)/range)*innerH;
+    const color = opts.color || "var(--accent2)";
+    const fmt = opts.formatValue || (v=>Math.round(v));
+    const linePts = points.map((p,i)=>`${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+
+    let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;max-width:${width}px;display:block;">`;
+    [minV, (minV+maxV)/2, maxV].forEach(v=>{
+      const yy = y(v).toFixed(1);
+      svg += `<line x1="${padL}" y1="${yy}" x2="${width-padR}" y2="${yy}" stroke="var(--border)" stroke-width="1"/>`;
+      svg += `<text x="${padL-6}" y="${(+yy+3).toFixed(1)}" font-size="10" fill="var(--muted)" text-anchor="end">${escapeHtml(fmt(v))}</text>`;
+    });
+    if(n>0){
+      svg += `<polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+      points.forEach((p,i)=>{
+        svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="3.5" fill="${color}"><title>${escapeHtml(p.label)}: ${escapeHtml(fmt(p.value))}</title></circle>`;
+      });
+      const labelStep = Math.max(1, Math.ceil(n/7));
+      points.forEach((p,i)=>{
+        if(i%labelStep!==0 && i!==n-1) return;
+        svg += `<text x="${x(i).toFixed(1)}" y="${height-padB+14}" font-size="9" fill="var(--muted)" text-anchor="middle">${escapeHtml(truncateLabel(p.label,8))}</text>`;
+      });
+    }
+    svg += `</svg>`;
+    return svg;
+  }
+  function buildBarChartSVG(points, opts){
+    opts = opts || {};
+    const width = opts.width || 520, height = opts.height || 190;
+    const padL = 50, padR = 14, padT = 14, padB = 50;
+    const innerW = width-padL-padR, innerH = height-padT-padB;
+    const values = points.map(p=>p.value);
+    const maxV = Math.max(...values, 1);
+    const n = points.length;
+    const barGap = 8;
+    const barW = n>0 ? Math.max(8,(innerW - barGap*(n-1))/n) : innerW;
+    const color = opts.color || "var(--accent)";
+    const fmt = opts.formatValue || (v=>Math.round(v));
+
+    let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;max-width:${width}px;display:block;">`;
+    [0, maxV].forEach(v=>{
+      const yy = (padT+innerH-(v/maxV)*innerH).toFixed(1);
+      svg += `<line x1="${padL}" y1="${yy}" x2="${width-padR}" y2="${yy}" stroke="var(--border)" stroke-width="1"/>`;
+      svg += `<text x="${padL-6}" y="${(+yy+3).toFixed(1)}" font-size="10" fill="var(--muted)" text-anchor="end">${escapeHtml(fmt(v))}</text>`;
+    });
+    points.forEach((p,i)=>{
+      const bx = padL + i*(barW+barGap);
+      const bh = maxV>0 ? (Math.max(p.value,0)/maxV)*innerH : 0;
+      const by = padT+innerH-bh;
+      const cx = (bx+barW/2).toFixed(1);
+      svg += `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" fill="${color}" rx="2"><title>${escapeHtml(p.label)}: ${escapeHtml(fmt(p.value))}</title></rect>`;
+      svg += `<text x="${cx}" y="${height-padB+16}" font-size="9" fill="var(--muted)" text-anchor="end" transform="rotate(-35 ${cx} ${height-padB+16})">${escapeHtml(truncateLabel(p.label,12))}</text>`;
+    });
+    svg += `</svg>`;
+    return svg;
   }
 
   // ---------- Artist history: aggregation, sortable table, CSV export ----------

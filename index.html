@@ -233,6 +233,49 @@
   .onboarding-step.done .onboarding-check{color:var(--ok);}
   .onboarding-check{font-weight:700;width:16px;text-align:center;color:var(--accent2);flex:0 0 auto;}
   .empty-state-cta{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;}
+
+  /* ==========================================================================
+     Touch / tablet / phone support.
+     Pointer Events (already used for all drag logic) work natively across
+     mouse/touch/pen, so no JS changes were needed for touch dragging itself —
+     these rules exist because (a) hover-to-reveal is a mouse-only affordance
+     that doesn't map to touch, and (b) touch targets sized for a mouse
+     cursor (8px resize handles, 15px toolbar buttons) are too small to
+     reliably grab with a fingertip.
+     ========================================================================== */
+  @media (pointer: coarse){
+    /* Hover can't be relied on to reveal these, and fingertips need a much
+       bigger hit target than a mouse pointer does. */
+    .gantt-v .block .resize-handle{ height:18px; }
+    .gantt-v .block .resize-handle.top{ top:-8px; }
+    .gantt-v .block .resize-handle.bottom{ bottom:-8px; }
+    .gantt-v .block .block-copy-btn,
+    .gantt-v .block .block-toolbar button{ opacity:1; }
+    .gantt-v .block .block-copy-btn{ font-size:11px; padding:3px 7px; }
+    .gantt-v .block .block-toolbar button{ width:23px; height:23px; line-height:21px; font-size:13px; }
+    .onboarding-step, .home-card, nav.tabs button{ min-height:40px; }
+  }
+  @media (max-width: 900px){
+    header.appbar{ padding:12px 14px; gap:10px; }
+    .storage-note{ padding:6px 14px; }
+    main{ padding:14px 12px 56px; }
+    nav.tabs{ padding:4px 12px; }
+    nav.tabs button{ padding:9px 10px; font-size:12.5px; }
+    .grid.cols2, .grid.cols3, .grid.cols4{ grid-template-columns:1fr 1fr; }
+    .home-grid{ grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); }
+    .card{ padding:14px 16px; }
+  }
+  @media (max-width: 600px){
+    header.appbar{ flex-direction:column; align-items:stretch; }
+    header.appbar .row{ justify-content:flex-start; }
+    .grid.cols2, .grid.cols3, .grid.cols4{ grid-template-columns:1fr; }
+    .home-grid{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); }
+    .gantt-v .lane{ flex:0 0 140px; width:140px; }
+    .gantt-v .axis-col{ width:46px; flex:0 0 46px; }
+    table.data{ font-size:11.5px; }
+    table.data th, table.data td{ padding:5px; }
+    .modal-box{ padding:18px; }
+  }
   .unscheduled-tray{border:1px dashed var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px;background:var(--panel2);}
   .unscheduled-tray-label{font-size:12px;color:var(--muted);margin-bottom:6px;}
   .unscheduled-tray-list{display:flex;flex-wrap:wrap;gap:8px;}
@@ -279,8 +322,6 @@
     .print-page{ page-break-after:always; padding:0; }
     .print-page:last-child{ page-break-after:auto; }
   }
-  /* DEMO BUILD banner — hidden entirely when printing so it never shows up
-     in exported PDFs. */
   #demoBanner{
     background:#b3185a; color:#fff; font-size:13px; font-weight:600;
     padding:8px 16px; display:flex; align-items:center; justify-content:center;
@@ -870,10 +911,6 @@
 (function(){
   "use strict";
 
-  // DEMO BUILD: storage keys are suffixed "_demo" so this build never shares
-  // data with the production build, even though GitHub Pages project sites
-  // under the same account all share one origin (and therefore one
-  // localStorage) regardless of which repo they're served from.
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
   const ARTIST_HISTORY_KEY = "cuefes_artist_history_v1_demo";

@@ -28,10 +28,15 @@
   .brand .wordmark{display:flex;flex-direction:column;gap:1px;padding-top:2px;}
   .brand .wordmark .tagline{color:var(--muted);font-size:11.5px;letter-spacing:.01em;}
   .storage-note{padding:7px 24px;background:var(--panel2);color:var(--muted);font-size:11.5px;border-bottom:1px solid var(--border);}
-  nav.tabs{display:flex;gap:2px;padding:0 24px;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--border);}
+  nav.tabs{display:flex;flex-direction:column;padding:4px 24px;background:var(--panel);border-bottom:1px solid var(--border);}
+  nav.tabs .tab-row{display:flex;align-items:center;gap:2px;flex-wrap:wrap;}
+  nav.tabs .tab-group-label{
+    font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;
+    padding:0 10px 0 2px;white-space:nowrap;
+  }
   nav.tabs button{
     background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;
-    padding:11px 14px;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.01em;
+    padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.01em;
     transition:color .12s ease,border-color .12s ease;
   }
   nav.tabs button:hover{color:var(--text);}
@@ -208,6 +213,26 @@
   .gantt-v .block .block-cut-btn{color:var(--warn);}
   .gantt-v .block.dragging{opacity:.85;z-index:5;box-shadow:0 3px 10px #0008;}
   .gantt-v .block.duplicating{outline:2px dashed var(--accent2);outline-offset:1px;cursor:copy;}
+  .gantt-v .block.block-selected{outline:2px solid var(--accent);outline-offset:1px;box-shadow:0 0 0 4px var(--accent-soft);}
+  .first-use-hint{
+    display:flex;align-items:flex-start;gap:12px;background:var(--accent2-soft);
+    border:1px solid var(--accent2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text);
+  }
+  .first-use-hint button{
+    background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);
+    cursor:pointer;font-size:11px;padding:3px 8px;flex:0 0 auto;
+  }
+  .onboarding-card{border-color:var(--accent2);}
+  .onboarding-steps{display:flex;flex-direction:column;gap:6px;}
+  .onboarding-step{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    cursor:pointer;font-size:13px;color:var(--text);background:var(--panel2);
+  }
+  .onboarding-step:hover{background:var(--accent2-soft);}
+  .onboarding-step.done{color:var(--muted);}
+  .onboarding-step.done .onboarding-check{color:var(--ok);}
+  .onboarding-check{font-weight:700;width:16px;text-align:center;color:var(--accent2);flex:0 0 auto;}
+  .empty-state-cta{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;}
   .unscheduled-tray{border:1px dashed var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px;background:var(--panel2);}
   .unscheduled-tray-label{font-size:12px;color:var(--muted);margin-bottom:6px;}
   .unscheduled-tray-list{display:flex;flex-wrap:wrap;gap:8px;}
@@ -308,17 +333,23 @@
 <div class="storage-note">複数DAY対応／データはこのブラウザ内に自動保存されます（他の端末とは共有されません）</div>
 
 <nav class="tabs">
-  <button data-tab="settings">① 基本設定</button>
-  <button data-tab="days">② DAY・時間設定</button>
-  <button data-tab="artists">③ アーティスト管理</button>
-  <button data-tab="live">④ ライブTT</button>
-  <button data-tab="tokuten">⑤ 特典会TT</button>
-  <button data-tab="output" class="admin-field">⑥ PDF出力</button>
-  <button data-tab="stats" class="admin-field">⑦ 実績集計</button>
-  <button data-tab="master" class="admin-field">⑧ アーティストマスタ</button>
-  <button data-tab="contactsheet" class="admin-field">⑨ 出演者連絡シート</button>
-  <button data-tab="staffschedule" class="admin-field">⑩ 進行表</button>
-  <button data-tab="clock" class="clock-tab">現在時刻</button>
+  <div class="tab-row">
+    <span class="tab-group-label">作成</span>
+    <button data-tab="settings">① 基本設定</button>
+    <button data-tab="days">② DAY・時間設定</button>
+    <button data-tab="artists">③ アーティスト管理</button>
+    <button data-tab="live">④ ライブTT</button>
+    <button data-tab="tokuten">⑤ 特典会TT</button>
+  </div>
+  <div class="tab-row">
+    <span class="tab-group-label">出力・記録</span>
+    <button data-tab="output" class="admin-field">⑥ PDF出力</button>
+    <button data-tab="stats" class="admin-field">⑦ 実績集計</button>
+    <button data-tab="master" class="admin-field">⑧ アーティストマスタ</button>
+    <button data-tab="contactsheet" class="admin-field">⑨ 出演者連絡シート</button>
+    <button data-tab="staffschedule" class="admin-field">⑩ 進行表</button>
+    <button data-tab="clock" class="clock-tab">現在時刻</button>
+  </div>
 </nav>
 
 <main>
@@ -330,6 +361,7 @@
       <h1>CueFesでできること</h1>
       <p>アイドルフェスなどのサーキットイベントのタイムテーブルと進行表を、ブラウザだけで作成・管理できます。やりたいことをクリックすると、その画面に移動します。</p>
     </div>
+    <div id="onboardingChecklist"></div>
     <div class="home-grid">
       <div class="home-card" data-goto="settings" role="button" tabindex="0"><div class="home-card-num">①</div><h3>基本設定をする</h3><p>イベント名・会場、ステージ・特典会場・楽屋の名前を登録します。すべての作業の出発点です。</p></div><div class="home-card" data-goto="days" role="button" tabindex="0"><div class="home-card-num">②</div><h3>DAY・時間設定をする</h3><p>開催日数と、DAYごとのライブ・特典会の開催時間帯を設定します。</p></div><div class="home-card" data-goto="artists" role="button" tabindex="0"><div class="home-card-num">③</div><h3>出演者を登録する</h3><p>手動入力、CSV一括登録、テキスト／画像（OCR）からの取り込みで出演者を登録します。</p></div><div class="home-card" data-goto="live" role="button" tabindex="0"><div class="home-card-num">④</div><h3>ライブTTを組み立てる</h3><p>ドラッグ操作で、ライブのタイムテーブルを直接編集できます。</p></div><div class="home-card" data-goto="tokuten" role="button" tabindex="0"><div class="home-card-num">⑤</div><h3>特典会TTを組み立てる</h3><p>物販・チェキ・お見送りなど、特典会のタイムテーブルを組み立てます。</p></div><div class="home-card admin-field" data-goto="output" role="button" tabindex="0"><div class="home-card-num">⑥</div><h3>PDF・PNG・Excelで出力する</h3><p>配布用のPDF、透明PNG画像、時間軸どおりのExcelファイルとして書き出せます。</p><div class="home-card-badge">管理者専用</div></div><div class="home-card admin-field" data-goto="stats" role="button" tabindex="0"><div class="home-card-num">⑦</div><h3>実績を集計する</h3><p>動員数・チケット売上・イベンター好感度をDAY別・全体で自動集計します。</p><div class="home-card-badge">管理者専用</div></div><div class="home-card admin-field" data-goto="master" role="button" tabindex="0"><div class="home-card-num">⑧</div><h3>アーティストマスタを使う</h3><p>イベントをまたいで使う名簿から、今のイベントへ一括ブッキングできます。</p><div class="home-card-badge">管理者専用</div></div><div class="home-card admin-field" data-goto="contactsheet" role="button" tabindex="0"><div class="home-card-num">⑨</div><h3>出演者連絡シートを作る</h3><p>楽屋・入り時間・出演時間をまとめた、マネージャー宛の連絡文を自動作成します。</p><div class="home-card-badge">管理者専用</div></div><div class="home-card admin-field" data-goto="staffschedule" role="button" tabindex="0"><div class="home-card-num">⑩</div><h3>進行表を作る</h3><p>舞台監督・音響など担当ごとの、搬入から撤収までの裏方進行表を作成します。</p><div class="home-card-badge">管理者専用</div></div><div class="home-card" data-goto="clock" role="button" tabindex="0"><div class="home-card-num">•</div><h3>本番当日に使う</h3><p>現在時刻と、DAYごとの開演・終演までの残り時間を大きく表示します。</p></div>
     </div>
@@ -982,7 +1014,7 @@
   // separate from STORAGE_KEY. That's what lets it survive "全データ削除" (which
   // only resets `state`) and carry booking-relevant numbers forward from one
   // event to the next, keyed by artist name.
-  // DEMO BUILD: seed a matching history so "⑦実績集計" → 通算実績 and the new
+  // DEMO BUILD: seed a matching history so "⑦実績集計" → 通算実績 and the
   // trend/comparison charts show meaningful data immediately, without waiting
   // for syncArtistHistoryFromCurrentEvent() to run on a first save. Includes
   // a couple of past circuit events (beyond the two seeded DAYs) so the
@@ -995,13 +1027,11 @@
       dayLabel: day, dayDate: date, audience, ticketSales, favorability, updatedAt: ts
     });
     return [
-      // Two past circuit events, so trends/comparisons have real history.
       mk("サークル前々回イベント","DAY1","2025-11-02","サンプル☆ガールズ","90","32000","4", -2),
       mk("サークル前々回イベント","DAY1","2025-11-02","キラキラユニット","70","25000","4", -2),
       mk("サークル前回イベント","DAY1","2026-01-11","サンプル☆ガールズ","100","40000","4", -1),
       mk("サークル前回イベント","DAY1","2026-01-11","キラキラユニット","85","31000","4", -1),
       mk("サークル前回イベント","DAY1","2026-01-11","ネオン戦隊","110","42000","3", -1),
-      // This event (matches the seeded artists in defaultState()).
       mk(ev,"DAY1","2026-04-01","サンプル☆ガールズ","120","45000","4", 1),
       mk(ev,"DAY1","2026-04-01","キラキラユニット","95","38000","5", 1),
       mk(ev,"DAY1","2026-04-01","ネオン戦隊","150","60000","3", 1),
@@ -2182,6 +2212,7 @@
       });
       tr.querySelector(".del-btn").addEventListener("click", ()=>{
         if(!confirm(a.name+" を削除しますか？")) return;
+        lastDeletedSnapshot = { kind:"artist", data: Object.assign({}, a) };
         state.artists = state.artists.filter(x=>x.id!==a.id);
         saveState(); renderAll();
       });
@@ -2213,6 +2244,73 @@
   const DRAG_SNAP_MIN = 5;
   const DRAG_MIN_DURATION = 5;
   const DRAG_MAX_MIN = 2875; // ~47:55, matches the app's "翌日" (next-day) time range
+
+  // ---------- Block selection + keyboard shortcuts (Delete/Backspace/Escape/Ctrl+Z) ----------
+  // A single selected block at a time, tracked here rather than per-element,
+  // since renderAll() rebuilds gantt DOM from scratch on every state change
+  // and any per-element state would be lost immediately. lastDeletedSnapshot
+  // gives a one-level undo (not a full history stack) for the delete action,
+  // covering the most common "oops, wrong one" case cheaply and safely.
+  let selectedBlockInfo = null; // {kind:"artist"|"staffTask", id}
+  let lastDeletedSnapshot = null; // {kind, data}
+  function clearBlockSelection(){
+    document.querySelectorAll(".block-selected").forEach(el=>el.classList.remove("block-selected"));
+    selectedBlockInfo = null;
+  }
+  function toggleBlockSelection(kind, id, blockEl){
+    if(selectedBlockInfo && selectedBlockInfo.kind===kind && selectedBlockInfo.id===id){
+      clearBlockSelection();
+      return;
+    }
+    clearBlockSelection();
+    selectedBlockInfo = { kind, id };
+    blockEl.classList.add("block-selected");
+  }
+  function isTypingInField(){
+    const el = document.activeElement;
+    return !!(el && (el.tagName==="INPUT" || el.tagName==="TEXTAREA" || el.tagName==="SELECT" || el.isContentEditable));
+  }
+  function deleteSelectedBlock(){
+    if(!selectedBlockInfo) return;
+    if(selectedBlockInfo.kind==="artist"){
+      const a = byId(state.artists, selectedBlockInfo.id);
+      if(!a){ clearBlockSelection(); return; }
+      if(!confirm(a.name+" を削除しますか？")) return;
+      lastDeletedSnapshot = { kind:"artist", data: Object.assign({}, a) };
+      state.artists = state.artists.filter(x=>x.id!==a.id);
+    } else if(selectedBlockInfo.kind==="staffTask"){
+      const t = byId(state.staffTasks, selectedBlockInfo.id);
+      if(!t){ clearBlockSelection(); return; }
+      if(!confirm(`「${t.label}」を削除しますか？`)) return;
+      lastDeletedSnapshot = { kind:"staffTask", data: Object.assign({}, t) };
+      state.staffTasks = state.staffTasks.filter(x=>x.id!==t.id);
+    }
+    clearBlockSelection();
+    saveState(); renderAll();
+  }
+  function undoLastDelete(){
+    if(!lastDeletedSnapshot) return;
+    if(lastDeletedSnapshot.kind==="artist") state.artists.push(lastDeletedSnapshot.data);
+    else if(lastDeletedSnapshot.kind==="staffTask") state.staffTasks.push(lastDeletedSnapshot.data);
+    lastDeletedSnapshot = null;
+    saveState(); renderAll();
+  }
+  // Skips entirely while a text field is focused, so this never fights with
+  // normal typing/backspacing or the browser's own per-field undo.
+  document.addEventListener("keydown", ev=>{
+    if(isTypingInField()) return;
+    if(ev.key==="Escape"){ clearBlockSelection(); return; }
+    if((ev.key==="Delete" || ev.key==="Backspace") && selectedBlockInfo){
+      ev.preventDefault();
+      deleteSelectedBlock();
+      return;
+    }
+    if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="z"){
+      ev.preventDefault();
+      undoLastDelete();
+    }
+  });
+
   function attachBlockDragHandlers(block, artist, startKey, endKey, laneKey, kind, pxPerMin, startMinOfChart, laneTrackEls, laneOrderIds){
     let dragMode = null; // "move" | "resize-start" | "resize-end"
     let dragStartY = 0, origStartMin = 0, origEndMin = 0, pointerId = null;
@@ -2288,6 +2386,7 @@
       const timeChanged = pendingStart!=null && pendingEnd!=null && (pendingStart!==origStartMin || pendingEnd!==origEndMin);
       const laneChanged = dragMode==="move" && hoverLaneId && hoverLaneId!==origLaneId;
       const wasDuplicate = duplicateMode;
+      const wasMoveMode = dragMode==="move";
       dragMode = null; duplicateMode = false;
       if(timeChanged || laneChanged){
         if(wasDuplicate){
@@ -2309,6 +2408,10 @@
         }
         saveState();
         renderAll();
+      } else if(wasMoveMode){
+        // No actual movement happened: treat this as a plain click, i.e. a
+        // selection toggle (so Delete/Backspace/Ctrl+Z can act on it).
+        toggleBlockSelection("artist", artist.id, block);
       }
     }
     function onPointerUp(){ endDrag(); }
@@ -2501,6 +2604,7 @@
       const timeChanged = pendingStart!=null && pendingEnd!=null && (pendingStart!==origStartMin || pendingEnd!==origEndMin);
       const laneChanged = dragMode==="move" && hoverLaneId && hoverLaneId!==origLaneId;
       const wasDuplicate = duplicateMode;
+      const wasMoveMode = dragMode==="move";
       dragMode = null; duplicateMode = false;
       if(timeChanged || laneChanged){
         if(wasDuplicate){
@@ -2513,6 +2617,8 @@
           if(laneChanged) task.laneId = hoverLaneId;
         }
         saveState(); renderAll();
+      } else if(wasMoveMode){
+        toggleBlockSelection("staffTask", task.id, block);
       }
     }
     function onPointerUp(){ endDrag(); }
@@ -2709,6 +2815,7 @@
           delBtn.addEventListener("click", ev=>{
             ev.preventDefault(); ev.stopPropagation();
             if(!confirm(`「${t.label}」を削除しますか？`)) return;
+            lastDeletedSnapshot = { kind:"staffTask", data: Object.assign({}, t) };
             state.staffTasks = state.staffTasks.filter(x=>x.id!==t.id);
             saveState(); renderAll();
           });
@@ -2795,6 +2902,7 @@
       wireTimeField(tr, "end", v=>{ t.end=v; saveState(); renderAll(); });
       tr.querySelector(".del-btn").addEventListener("click", ()=>{
         if(!confirm(`「${t.label}」を削除しますか？`)) return;
+        lastDeletedSnapshot = { kind:"staffTask", data: Object.assign({}, t) };
         state.staffTasks = state.staffTasks.filter(x=>x.id!==t.id);
         saveState(); renderAll();
       });
@@ -2861,9 +2969,19 @@
     container.innerHTML = "";
     if(lanes.length===0){
       const totalLaneCount = (kind==="live" ? state.stages : state.tokutenSpots).length;
-      container.innerHTML = totalLaneCount===0
-        ? `<div class="helptext">${kind==="live"?"ステージ":"特典会場"}が登録されていません。「①基本設定」タブで追加してください。</div>`
-        : `<div class="helptext">出力対象のチェックが外れています。「⑥PDF出力」タブで${kind==="live"?"ステージ":"特典会場"}を1つ以上選択してください。</div>`;
+      if(totalLaneCount===0){
+        container.innerHTML = `<div class="empty-state-cta">
+          <div class="helptext" style="margin:0;">${kind==="live"?"ステージ":"特典会場"}が登録されていません。</div>
+          <button type="button" class="btn secondary" data-goto-tab="settings">① 基本設定で${kind==="live"?"ステージ":"特典会場"}を追加する</button>
+        </div>`;
+        const btn = container.querySelector("[data-goto-tab]");
+        if(btn) btn.addEventListener("click", ()=>{
+          const navBtn = document.querySelector('nav.tabs button[data-tab="settings"]');
+          if(navBtn) navBtn.click();
+        });
+      } else {
+        container.innerHTML = `<div class="helptext">出力対象のチェックが外れています。「⑥PDF出力」タブで${kind==="live"?"ステージ":"特典会場"}を1つ以上選択してください。</div>`;
+      }
       return;
     }
 
@@ -2970,6 +3088,7 @@
             delBtn.addEventListener("click", ev=>{
               ev.preventDefault(); ev.stopPropagation();
               if(!confirm(a.name+" を削除しますか？")) return;
+              lastDeletedSnapshot = { kind:"artist", data: Object.assign({}, a) };
               state.artists = state.artists.filter(x=>x.id!==a.id);
               saveState(); renderAll();
             });
@@ -3060,9 +3179,75 @@
     wrapEl.appendChild(section);
   }
 
+  // ---------- Lightweight one-time hint (no external tour library) ----------
+  function renderFirstUseHint(wrap){
+    let seen = false;
+    try{ seen = localStorage.getItem("cuefes_seen_gantt_hint")==="1"; }catch(e){ /* ignore */ }
+    if(seen) return;
+    const hint = document.createElement("div");
+    hint.className = "first-use-hint";
+    hint.innerHTML = `
+      <div>
+        <strong>知っていると便利な操作：</strong>
+        枠にマウスを乗せると、右上に「→特典会」ボタン、左上に「✕削除」「✂切り取り」ボタンが出ます。
+        Alt（Windows）／Option（Mac）を押しながらドラッグすると複製できます。
+        枠をクリックして選択すると、Deleteキーで削除、Ctrl+Zで元に戻せます。
+      </div>
+      <button type="button" class="btnDismissFirstUseHint">✕ 閉じる</button>`;
+    wrap.appendChild(hint);
+    hint.querySelector(".btnDismissFirstUseHint").addEventListener("click", ()=>{
+      hint.remove();
+      try{ localStorage.setItem("cuefes_seen_gantt_hint","1"); }catch(e){ /* ignore */ }
+    });
+  }
+
+  // ---------- Onboarding checklist (home page) ----------
+  function markExportedOnce(){
+    try{ localStorage.setItem("cuefes_has_exported_once","1"); }catch(e){ /* ignore */ }
+  }
+  function computeOnboardingSteps(){
+    const hasEventName = !!(state.event.name||"").trim();
+    const hasArtist = state.artists.length>0;
+    const hasSchedule = state.artists.some(a=>
+      (isValidTime(a.liveStart)&&isValidTime(a.liveEnd)) || (isValidTime(a.tokutenStart)&&isValidTime(a.tokutenEnd))
+    );
+    let hasExported = false;
+    try{ hasExported = localStorage.getItem("cuefes_has_exported_once")==="1"; }catch(e){ /* ignore */ }
+    return [
+      { done:hasEventName, label:"①でイベント名を入力する", goto:"settings" },
+      { done:hasArtist, label:"③で出演者を登録する", goto:"artists" },
+      { done:hasSchedule, label:"④⑤で出演時間を設定する（タイムテーブルを組む）", goto:"live" },
+      { done:hasExported, label:"⑥でPDF・PNG・Excelのいずれかを出力してみる", goto:"output" }
+    ];
+  }
+  function renderOnboardingChecklist(){
+    const wrap = document.getElementById("onboardingChecklist");
+    if(!wrap) return;
+    const steps = computeOnboardingSteps();
+    const doneCount = steps.filter(s=>s.done).length;
+    if(doneCount===steps.length){ wrap.innerHTML = ""; return; }
+    wrap.innerHTML = `
+      <div class="card onboarding-card">
+        <h2>はじめに（${doneCount}/${steps.length}）</h2>
+        <div class="onboarding-steps">
+          ${steps.map(s=>`
+            <div class="onboarding-step${s.done?" done":""}" data-goto="${s.goto}" role="button" tabindex="0">
+              <span class="onboarding-check">${s.done?"✓":"○"}</span>
+              <span>${escapeHtml(s.label)}</span>
+            </div>`).join("")}
+        </div>
+      </div>`;
+    wrap.querySelectorAll(".onboarding-step").forEach(el=>{
+      const go = ()=>{ const btn = document.querySelector('nav.tabs button[data-tab="'+el.dataset.goto+'"]'); if(btn) btn.click(); };
+      el.addEventListener("click", go);
+      el.addEventListener("keydown", ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); go(); } });
+    });
+  }
+
   function renderLiveTab(){
     const wrap = document.getElementById("liveTabWrap");
     wrap.innerHTML = "";
+    renderFirstUseHint(wrap);
     state.days.forEach(day=> renderDaySection(wrap, "live", day));
   }
   function renderTokutenTab(){
@@ -3241,6 +3426,7 @@
     activePrintBuilder = buildPrintArea;
     buildPrintArea();
     window.print();
+    markExportedOnce();
   });
 
   // ---------- PNG image export (for overlaying onto a flyer in image-editing software) ----------
@@ -3435,6 +3621,7 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url), 4000);
       if(statusEl) statusEl.textContent = `完了：${sheetIndex}枚のシートを含むExcelファイルを書き出しました。`;
+      markExportedOnce();
     }catch(err){
       if(statusEl) statusEl.textContent = "";
       alert("Excelファイルの書き出し中にエラーが発生しました。");
@@ -3543,6 +3730,7 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url), 4000);
       if(statusEl) statusEl.textContent = `完了：${days.length}枚のシートを含む進行表Excelファイルを書き出しました。`;
+      markExportedOnce();
     }catch(err){
       if(statusEl) statusEl.textContent = "";
       alert("Excelファイルの書き出し中にエラーが発生しました。");
@@ -3627,6 +3815,7 @@
         setTimeout(()=>URL.revokeObjectURL(url), 4000);
       }
       if(statusEl) statusEl.textContent = `完了：${jobs.length}枚のPNG画像を書き出しました。`;
+      markExportedOnce();
     }catch(err){
       if(statusEl) statusEl.textContent = "";
       alert("PNG画像の書き出し中にエラーが発生しました。");
@@ -4139,6 +4328,7 @@
     renderArtistMasterTab();
     renderContactSheetTab();
     renderStaffTab();
+    renderOnboardingChecklist();
     updateClock();
     applyAdminVisibility();
     document.title = (state.event.name?state.event.name+" - ":"")+"CueFes";

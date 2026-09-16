@@ -307,6 +307,7 @@
     </div>
   </div>
   <div class="row">
+    <button class="btn secondary" id="btnShortcutHelp">？ ショートカット</button>
     <button class="btn secondary" id="btnAdminToggle">管理者ログイン</button>
     <button class="btn secondary" id="btnBackupExport">バックアップ保存(JSON)</button>
     <label class="btn secondary" style="cursor:pointer;">
@@ -316,6 +317,36 @@
     <button class="btn danger" id="btnResetAll">全データ削除</button>
   </div>
 </header>
+
+<div class="modal-overlay" id="shortcutHelpModal">
+  <div class="modal-box" style="max-width:640px;max-height:80vh;overflow-y:auto;">
+    <h3>ショートカット・操作早見表</h3>
+    <p class="helptext">主に④ライブTT／⑤特典会TT／⑩進行表のガントチャート上で使える操作をまとめています。</p>
+    <table class="data" style="margin-bottom:14px;">
+      <thead><tr><th>操作</th><th>できること</th></tr></thead>
+      <tbody>
+        <tr><td>枠をクリック</td><td>その枠を選択する（もう一度クリックすると選択解除）</td></tr>
+        <tr><td>枠の本体をドラッグ</td><td>時間の移動、または隣の列にドロップしてステージ／特典会場／担当を変更する</td></tr>
+        <tr><td>枠の上端・下端をドラッグ</td><td>開始または終了だけを変更する（尺が変わります）</td></tr>
+        <tr><td>Alt（Windows）／Option（Mac）＋ドラッグ</td><td>その枠を複製する（元の枠はそのまま残ります）</td></tr>
+        <tr><td>「未設定」チップをドラッグ</td><td>時間が決まっていない予定・作業を、好きな位置にドラッグして時間を決める</td></tr>
+        <tr><td>枠にマウスを乗せる</td><td>左上に「✕削除」「✂切り取り」、（ライブのみ）右上に「→特典会」ボタンが表示される</td></tr>
+      </tbody>
+    </table>
+    <table class="data">
+      <thead><tr><th>キー</th><th>できること</th></tr></thead>
+      <tbody>
+        <tr><td>Delete または Backspace</td><td>選択中の枠を削除する（確認ダイアログが出ます）</td></tr>
+        <tr><td>Escape</td><td>選択を解除する</td></tr>
+        <tr><td>Ctrl+Z（Macは⌘+Z）</td><td>直前に削除した1件だけを元に戻す（複数回さかのぼることはできません）</td></tr>
+      </tbody>
+    </table>
+    <p class="helptext" style="margin-top:10px;">文字入力欄にカーソルがあるときは、Delete/Backspace/Ctrl+Zはこの早見表の動作をせず、通常のテキスト編集として扱われます。</p>
+    <div class="row" style="margin-top:14px;justify-content:flex-end;">
+      <button class="btn" id="shortcutHelpClose">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="adminModal">
   <div class="modal-box">
@@ -905,9 +936,6 @@
     return {id:uid(), label:"DAY"+n, date:"", liveStart:"10:00", liveEnd:"20:00", tokutenStart:"10:00", tokutenEnd:"20:00"};
   }
 
-  // DEMO BUILD: defaultState() returns a pre-filled sample event instead of a
-  // blank one, so first-time visitors (and anyone who presses "全データ削除")
-  // immediately see a populated, explorable demo rather than an empty form.
   function defaultState(){
     const day1 = makeDefaultDay(1); day1.date = "2026-04-01";
     const day2 = makeDefaultDay(2); day2.date = "2026-04-02";
@@ -1014,12 +1042,6 @@
   // separate from STORAGE_KEY. That's what lets it survive "全データ削除" (which
   // only resets `state`) and carry booking-relevant numbers forward from one
   // event to the next, keyed by artist name.
-  // DEMO BUILD: seed a matching history so "⑦実績集計" → 通算実績 and the
-  // trend/comparison charts show meaningful data immediately, without waiting
-  // for syncArtistHistoryFromCurrentEvent() to run on a first save. Includes
-  // a couple of past circuit events (beyond the two seeded DAYs) so the
-  // artist trend line chart and the event-comparison bar chart both have
-  // more than two points to actually show a trend.
   function demoSeedArtistHistory(){
     const ev = "サンプルフェス2026";
     const mk = (event, day, date, name, audience, ticketSales, favorability, ts) => ({
@@ -1100,8 +1122,6 @@
   // roster meant for reuse). Kept deliberately simple: name + a free-text memo
   // for contact/agency info, since that's what's needed to pick artists off a
   // list and book them into a new event without retyping.
-  // DEMO BUILD: a few sample roster entries so "⑧アーティストマスタ" isn't
-  // empty on first look.
   function demoSeedArtistMaster(){
     return [
       { id: uid(), name:"サンプル☆ガールズ", memo:"○○プロダクション／担当：田中様 090-xxxx-xxxx", createdAt: 1 },
@@ -2298,6 +2318,10 @@
   // Skips entirely while a text field is focused, so this never fights with
   // normal typing/backspacing or the browser's own per-field undo.
   document.addEventListener("keydown", ev=>{
+    if(ev.key==="Escape"){
+      const helpModal = document.getElementById("shortcutHelpModal");
+      if(helpModal && helpModal.style.display==="flex"){ helpModal.style.display="none"; return; }
+    }
     if(isTypingInField()) return;
     if(ev.key==="Escape"){ clearBlockSelection(); return; }
     if((ev.key==="Delete" || ev.key==="Backspace") && selectedBlockInfo){
@@ -3191,7 +3215,7 @@
         <strong>知っていると便利な操作：</strong>
         枠にマウスを乗せると、右上に「→特典会」ボタン、左上に「✕削除」「✂切り取り」ボタンが出ます。
         Alt（Windows）／Option（Mac）を押しながらドラッグすると複製できます。
-        枠をクリックして選択すると、Deleteキーで削除、Ctrl+Zで元に戻せます。
+        枠をクリックして選択すると、Deleteキーで削除、Ctrl+Zで元に戻せます。画面右上の「？ ショートカット」からいつでも一覧を確認できます。
       </div>
       <button type="button" class="btnDismissFirstUseHint">✕ 閉じる</button>`;
     wrap.appendChild(hint);
@@ -4460,6 +4484,15 @@
       document.getElementById("demoBanner").style.display = "none";
     });
   }
+  document.getElementById("btnShortcutHelp").addEventListener("click", ()=>{
+    document.getElementById("shortcutHelpModal").style.display = "flex";
+  });
+  document.getElementById("shortcutHelpClose").addEventListener("click", ()=>{
+    document.getElementById("shortcutHelpModal").style.display = "none";
+  });
+  document.getElementById("shortcutHelpModal").addEventListener("click", e=>{
+    if(e.target.id === "shortcutHelpModal") document.getElementById("shortcutHelpModal").style.display = "none";
+  });
   document.getElementById("btnAdminToggle").addEventListener("click", ()=>{
     if(adminUnlocked){
       adminUnlocked = false;

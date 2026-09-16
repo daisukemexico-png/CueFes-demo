@@ -687,6 +687,7 @@
         <div><label>尺（分）</label><span class="durfield"><input type="number" id="afDuration" min="0" step="5" placeholder="20"><span>分→終了を自動計算</span></span></div>
         <div><label>転換/バッファ（分）</label><span class="durfield"><input type="number" id="afChangeover" min="0" step="5" placeholder="5"><span>分（次の枠まで）</span></span></div>
         <div><label>特典会尺（分）</label><span class="durfield"><input type="number" id="afTokutenDuration" min="0" step="5" placeholder="20"><span>分→特典会終了を自動計算</span></span></div>
+        <div><label>移動時間（分）</label><span class="durfield"><input type="number" id="afMoveBuffer" min="0" step="5" placeholder="例：5"><span>ライブ⇔特典会の場所移動に必要な最短時間</span></span></div>
         <div><label>楽屋</label><select id="afGreenRoom"></select></div>
         <div><label>入り時間</label><span class="timefield"><input type="time" step="300" data-role="afCallTime"><label class="timefield-late"><input type="checkbox" data-role="afCallTime_late">翌日</label></span></div>
         <div class="admin-field"><label>動員数</label><input type="number" id="afAudience" min="0" step="1" placeholder="人数"></div>
@@ -731,6 +732,7 @@
               <th>特典会尺(分)</th>
               <th>楽屋</th>
               <th data-sort="callTime" data-label="入り時間" style="cursor:pointer;white-space:nowrap;">入り時間</th>
+              <th title="ライブ⇔特典会の場所移動に必要な最短時間">移動時間(分)</th>
               <th>メモ</th>
               <th class="admin-field">動員数</th><th class="admin-field">チケット売上</th><th class="admin-field">好感度</th><th></th>
             </tr>
@@ -1507,7 +1509,7 @@
     return v;
   }
 
-  const CSV_HEADERS = ["DAY","アーティスト名","ステージ","ライブ開始","ライブ終了","尺(分)","転換(分)","特典会場","特典会開始","特典会終了","特典会尺(分)","楽屋","入り時間","メモ","動員数","チケット売上","イベンター好感度"];
+  const CSV_HEADERS = ["DAY","アーティスト名","ステージ","ライブ開始","ライブ終了","尺(分)","転換(分)","特典会場","特典会開始","特典会終了","特典会尺(分)","楽屋","入り時間","移動時間(分)","メモ","動員数","チケット売上","イベンター好感度"];
 
   function importCSVText(text, mode){
     mode = mode || "upsert"; // "upsert" | "append"
@@ -1542,10 +1544,11 @@
       const tokutenDurationNm = get("特典会尺(分)",10);
       const greenRoomNm = get("楽屋",11);
       const callTimeNm = get("入り時間",12);
-      const memo = get("メモ",13);
-      const audienceNm = get("動員数",14);
-      const ticketSalesNm = get("チケット売上",15);
-      const favorabilityNm = get("イベンター好感度",16);
+      const moveBufferNm = get("移動時間(分)",13);
+      const memo = get("メモ",14);
+      const audienceNm = get("動員数",15);
+      const ticketSalesNm = get("チケット売上",16);
+      const favorabilityNm = get("イベンター好感度",17);
       const dayId = findOrCreateDay(dayNm);
 
       liveStart = isValidTime(liveStart) ? liveStart : "";
@@ -1573,6 +1576,7 @@
         tokutenDurationMin: !isNaN(tokDurMin) ? String(tokDurMin) : (tokutenStartV && tokutenEndV ? String(timeToMin(tokutenEndV)-timeToMin(tokutenStartV)) : ""),
         greenRoomId: greenRoomNm ? findOrCreateGreenRoom(greenRoomNm) : "",
         callTime: isValidTime(callTimeNm) ? callTimeNm : "",
+        moveBufferMin: /^[0-9]+$/.test(moveBufferNm) ? moveBufferNm : "",
         memo
       };
       // 動員数/チケット売上/イベンター好感度は管理者専用項目のため、ロック中は
@@ -1610,14 +1614,14 @@
 
   function exportCSV(){
     const showAdmin = adminFieldsVisible();
-    const headers = showAdmin ? CSV_HEADERS : CSV_HEADERS.slice(0,14);
+    const headers = showAdmin ? CSV_HEADERS : CSV_HEADERS.slice(0,15);
     const lines = [headers.map(csvField).join(",")];
     state.artists.forEach(a=>{
       const row = [
         dayLabel(a.dayId), a.name, stageName(a.stageId), a.liveStart||"", a.liveEnd||"",
         a.durationMin||"", a.changeoverMin||"",
         tokutenName(a.tokutenSpotId), a.tokutenStart||"", a.tokutenEnd||"", a.tokutenDurationMin||"",
-        greenRoomName(a.greenRoomId), a.callTime||"", a.memo||""
+        greenRoomName(a.greenRoomId), a.callTime||"", a.moveBufferMin||"", a.memo||""
       ];
       if(showAdmin) row.push(a.audience||"", a.ticketSales||"", a.favorability||"");
       lines.push(row.map(csvField).join(","));
@@ -1860,7 +1864,7 @@
       } else {
         const obj = { id:uid(), name, color:colorForIndex(state.artists.length), dayId,
           stageId:"", liveStart:"", liveEnd:"", durationMin:"", changeoverMin:"",
-          tokutenSpotId:"", tokutenStart:"", tokutenEnd:"", tokutenDurationMin:"", greenRoomId:"", callTime:"", memo:"",
+          tokutenSpotId:"", tokutenStart:"", tokutenEnd:"", tokutenDurationMin:"", greenRoomId:"", callTime:"", moveBufferMin:"", memo:"",
           audience:"", ticketSales:"", favorability:"" };
         if(target==="live"){ obj.stageId=laneId; obj.liveStart=start; obj.liveEnd=end; syncDurationFromTimes(obj, "live"); }
         else { obj.tokutenSpotId=laneId; obj.tokutenStart=start; obj.tokutenEnd=end; syncDurationFromTimes(obj, "tokuten"); }
@@ -1943,6 +1947,44 @@
     const set = new Set();
     state.days.forEach(d=>{ detectBufferWarnings(d.id).forEach(id=>set.add(id)); });
     return set;
+  }
+
+  // Detects the SAME artist having live and tokuten bookings that either
+  // literally overlap (impossible — can't be in two places at once) or leave
+  // less gap than that artist's own 移動時間(分) requires to physically get
+  // from one location to the other. Distinct from detectConflicts (which
+  // only compares different artists within the same single lane) and
+  // detectBufferWarnings (same-stage equipment changeover between different
+  // artists) — this one is specifically about one artist's own live↔tokuten
+  // movement, which neither of those touches.
+  function detectMoveIssues(dayId){
+    const conflictIds = new Set();
+    const warningIds = new Set();
+    state.artists.filter(a=>a.dayId===dayId).forEach(a=>{
+      if(!a.stageId || !a.tokutenSpotId) return; // need both locations set to mean anything
+      if(!isValidTime(a.liveStart) || !isValidTime(a.liveEnd)) return;
+      if(!isValidTime(a.tokutenStart) || !isValidTime(a.tokutenEnd)) return;
+      const liveS = timeToMin(a.liveStart), liveE = timeToMin(a.liveEnd);
+      const tokS = timeToMin(a.tokutenStart), tokE = timeToMin(a.tokutenEnd);
+      if(liveS < tokE && tokS < liveE){
+        conflictIds.add(a.id);
+        return;
+      }
+      const moveBuffer = parseInt(a.moveBufferMin, 10) || 0;
+      if(moveBuffer<=0) return;
+      const gap = tokS >= liveE ? tokS - liveE : liveS - tokE;
+      if(gap < moveBuffer) warningIds.add(a.id);
+    });
+    return { conflictIds, warningIds };
+  }
+  function detectMoveIssuesAll(){
+    const conflictIds = new Set(), warningIds = new Set();
+    state.days.forEach(d=>{
+      const r = detectMoveIssues(d.id);
+      r.conflictIds.forEach(id=>conflictIds.add(id));
+      r.warningIds.forEach(id=>warningIds.add(id));
+    });
+    return { conflictIds, warningIds };
   }
 
   // ---------- Rendering: settings tab ----------
@@ -2229,7 +2271,7 @@
         state.artists.push({
           id:uid(), name:m.name, color: colorForIndex(state.artists.length),
           dayId, stageId:"", liveStart:"", liveEnd:"", durationMin:"", changeoverMin:"",
-          tokutenSpotId:"", tokutenStart:"", tokutenEnd:"", tokutenDurationMin:"", greenRoomId:"", callTime:"", memo:m.memo||"",
+          tokutenSpotId:"", tokutenStart:"", tokutenEnd:"", tokutenDurationMin:"", greenRoomId:"", callTime:"", moveBufferMin:"", memo:m.memo||"",
           audience:"", ticketSales:"", favorability:""
         });
       });
@@ -2314,6 +2356,7 @@
         <td><input type="number" data-role="tokutenDurationMin" min="0" step="5" value="${escapeAttr(a.tokutenDurationMin||"")}" style="width:60px;" title="特典会の尺（分）。入力すると特典会終了を自動計算します"></td>
         <td><select data-role="greenRoomId" style="min-width:90px;"></select></td>
         <td>${timeFieldHtml("callTime", a.callTime)}</td>
+        <td><input type="number" data-role="moveBufferMin" min="0" step="5" value="${escapeAttr(a.moveBufferMin||"")}" style="width:70px;" title="ライブ⇔特典会の場所移動に必要な最短時間（分）。ライブ終了〜特典会開始（またはその逆）の間隔がこれより短いと警告表示されます"></td>
         <td><input type="text" data-role="memo" value="${escapeAttr(a.memo)}" style="min-width:100px;"></td>
         <td class="admin-field"><input type="number" data-role="audience" min="0" step="1" value="${escapeAttr(a.audience||"")}" style="width:70px;" title="動員数（人）"></td>
         <td class="admin-field"><input type="number" data-role="ticketSales" min="0" step="100" value="${escapeAttr(a.ticketSales||"")}" style="width:90px;" title="チケット売上（円）"></td>
@@ -3130,6 +3173,9 @@
     const defEnd = day ? (kind==="live" ? day.liveEnd : day.tokutenEnd) : "";
     const conflicts = detectConflicts(kind, dayId);
     const bufferWarnings = kind==="live" ? detectBufferWarnings(dayId) : new Set();
+    const moveIssues = detectMoveIssues(dayId);
+    moveIssues.conflictIds.forEach(id=>conflicts.add(id));
+    moveIssues.warningIds.forEach(id=>bufferWarnings.add(id));
     const dayArtists = state.artists.filter(a=>a.dayId===dayId);
 
     container.innerHTML = "";
@@ -3336,6 +3382,13 @@
       if(bufWarn.size>0){
         statusHtml += `<div class="buffer-banner">注意：転換/バッファ時間が不足している枠があります: ${escapeHtml(state.artists.filter(a=>bufWarn.has(a.id)).map(a=>a.name).join("、"))}</div>`;
       }
+    }
+    const moveIssues = detectMoveIssues(day.id);
+    if(moveIssues.conflictIds.size>0){
+      statusHtml += `<div class="warn-banner">注意：ライブと特典会の時間が重なっているアーティストがいます（物理的に不可能です）: ${escapeHtml(state.artists.filter(a=>moveIssues.conflictIds.has(a.id)).map(a=>a.name).join("、"))}</div>`;
+    }
+    if(moveIssues.warningIds.size>0){
+      statusHtml += `<div class="buffer-banner">注意：ライブ⇔特典会の移動時間が足りていない可能性があるアーティストがいます: ${escapeHtml(state.artists.filter(a=>moveIssues.warningIds.has(a.id)).map(a=>a.name).join("、"))}</div>`;
     }
     const sub = day.date ? (" ・ "+day.date) : "";
     section.innerHTML = `<h2>${escapeHtml(day.label)}${escapeHtml(sub)} － ${label}</h2>` + statusHtml +
@@ -4891,6 +4944,7 @@
     const durationVal = document.getElementById("afDuration").value.trim();
     const changeoverVal = document.getElementById("afChangeover").value.trim();
     const tokutenDurationVal = document.getElementById("afTokutenDuration").value.trim();
+    const moveBufferVal = document.getElementById("afMoveBuffer").value.trim();
     const newArtist = {
       id:uid(), name, color: colorForIndex(state.artists.length),
       dayId: document.getElementById("afDay").value || state.days[0].id,
@@ -4900,6 +4954,7 @@
       tokutenSpotId: document.getElementById("afTokuten").value,
       tokutenStart: ts, tokutenEnd: te, tokutenDurationMin: tokutenDurationVal,
       greenRoomId: document.getElementById("afGreenRoom").value, callTime: ct,
+      moveBufferMin: moveBufferVal,
       memo: document.getElementById("afMemo").value.trim(),
       audience: adminFieldsVisible() ? document.getElementById("afAudience").value.trim() : "",
       ticketSales: adminFieldsVisible() ? document.getElementById("afTicketSales").value.trim() : "",
@@ -4913,6 +4968,7 @@
     document.getElementById("afDuration").value = "";
     document.getElementById("afChangeover").value = "";
     document.getElementById("afTokutenDuration").value = "";
+    document.getElementById("afMoveBuffer").value = "";
     document.getElementById("afAudience").value = "";
     document.getElementById("afTicketSales").value = "";
     document.getElementById("afFavorability").value = "";
@@ -4930,7 +4986,7 @@
   });
   document.getElementById("btnCsvExport").addEventListener("click", exportCSV);
   document.getElementById("btnCsvTemplate").addEventListener("click", ()=>{
-    const headers = adminFieldsVisible() ? CSV_HEADERS : CSV_HEADERS.slice(0,14);
+    const headers = adminFieldsVisible() ? CSV_HEADERS : CSV_HEADERS.slice(0,15);
     downloadBlob(headers.map(csvField).join(",")+"\n", "artist_template.csv", "text/csv;charset=utf-8");
   });
 

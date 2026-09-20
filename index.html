@@ -3635,7 +3635,7 @@
     const logoImg = document.getElementById("hdrTitle");
     const wm = document.createElement("div");
     wm.className = "print-watermark";
-    wm.innerHTML = `${logoImg ? `<img src="${logoImg.src}" alt="CueFes">` : ""}<span>Made with CueFes（無料版）</span>`;
+    wm.innerHTML = `${logoImg ? `<img src="${logoImg.src}" alt="CueFes">` : ""}<span>CueFesで作成</span>`;
     pageEl.appendChild(wm);
   }
 
@@ -3953,7 +3953,7 @@
         // watermark note. Premium: left blank.
         const wmCell = sheet.cell(1,1);
         if(isFree){
-          wmCell.value("CueFesで作成（無料版） — プレミアムでこの表示を消せます");
+          wmCell.value("CueFesで作成");
           safeStyle(wmCell, "italic", true);
           safeStyle(wmCell, "fontColor", "999999");
         }

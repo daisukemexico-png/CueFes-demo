@@ -4846,7 +4846,7 @@
     const email = getPremiumEmail();
     btn.style.display = "";
     btn.classList.toggle("tier-sponsor", tier==="sponsor");
-    btn.textContent = (tier==="sponsor" ? "スポンサー：" : "プレミアム：") + email;
+    btn.textContent = (tier==="sponsor" ? "スポンサー：" : "✓ ") + email;
   }
   function renderPremiumModal(){
     const unlocked = isPremiumUnlocked();

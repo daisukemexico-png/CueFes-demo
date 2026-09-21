@@ -445,6 +445,7 @@
         ✓ プレミアム機能が有効です<br>
         <span id="premiumUnlockedEmail" style="color:var(--muted);font-size:12px;"></span>
       </div>
+      <p class="helptext" id="premiumSponsorWatermarkNote" style="display:none;margin-top:8px;">スポンサー特典でのご利用のため、PDF・Excel出力の「CueFesで作成」の表示はそのまま残ります。</p>
       <div class="row" style="margin-top:12px;">
         <button class="btn ghost" id="btnPremiumLogout">このメールアドレスの登録を解除する</button>
       </div>
@@ -3631,7 +3632,7 @@
   // that stays fully usable without a premium unlock). Reuses the same
   // embedded logo already in the header, so no extra image asset is needed.
   function addPrintWatermarkIfFree(pageEl){
-    if(typeof isPremiumUnlocked === "function" && isPremiumUnlocked()) return;
+    if(typeof shouldShowWatermark === "function" && !shouldShowWatermark()) return;
     const logoImg = document.getElementById("hdrTitle");
     const wm = document.createElement("div");
     wm.className = "print-watermark";
@@ -3936,7 +3937,7 @@
       }
 
       const lanes = state.staffLanes;
-      const isFree = typeof isPremiumUnlocked === "function" ? !isPremiumUnlocked() : false;
+      const isFree = typeof shouldShowWatermark === "function" ? shouldShowWatermark() : true;
       days.forEach((day, dayIdx)=>{
         const sheetName = uniqueSheetName(day.label+"進行表");
         const sheet = dayIdx===0 ? workbook.sheet(0).name(sheetName) : workbook.addSheet(sheetName);
@@ -4782,6 +4783,7 @@
     stripePaymentLinkUrl: "https://buy.stripe.com/test_8x2cN7dxHaDa7b70jK7N600" // Stripe Payment Link (test/sandbox mode)
   };
   const PREMIUM_EMAIL_KEY = "cuefes_premium_email_demo";
+  const PREMIUM_TIER_KEY = "cuefes_premium_tier_demo"; // "paid" | "sponsor"
 
   function isPremiumUnlocked(){
     try{ return !!localStorage.getItem(PREMIUM_EMAIL_KEY); }catch(e){ return false; }
@@ -4789,11 +4791,27 @@
   function getPremiumEmail(){
     try{ return localStorage.getItem(PREMIUM_EMAIL_KEY) || ""; }catch(e){ return ""; }
   }
-  function setPremiumUnlocked(email){
-    try{ localStorage.setItem(PREMIUM_EMAIL_KEY, email); }catch(e){ /* ignore */ }
+  function getPremiumTier(){
+    try{ return localStorage.getItem(PREMIUM_TIER_KEY) || ""; }catch(e){ return ""; }
+  }
+  // Sponsors get every locked feature unlocked, same as a paying customer —
+  // the one thing that stays different is the watermark, which a sponsor
+  // keeps (it's their exposure/placement, not something they're paying to
+  // remove). Only the "paid" tier removes it.
+  function shouldShowWatermark(){
+    return getPremiumTier()!=="paid";
+  }
+  function setPremiumUnlocked(email, tier){
+    try{
+      localStorage.setItem(PREMIUM_EMAIL_KEY, email);
+      localStorage.setItem(PREMIUM_TIER_KEY, tier||"paid");
+    }catch(e){ /* ignore */ }
   }
   function clearPremiumUnlock(){
-    try{ localStorage.removeItem(PREMIUM_EMAIL_KEY); }catch(e){ /* ignore */ }
+    try{
+      localStorage.removeItem(PREMIUM_EMAIL_KEY);
+      localStorage.removeItem(PREMIUM_TIER_KEY);
+    }catch(e){ /* ignore */ }
   }
   function applyPremiumGates(){
     const unlocked = isPremiumUnlocked();
@@ -4801,14 +4819,22 @@
       el.classList.toggle("locked", !unlocked);
     });
     const wmNote = document.getElementById("staffXlsxWatermarkNote");
-    if(wmNote) wmNote.style.display = unlocked ? "none" : "block";
+    if(wmNote) wmNote.style.display = shouldShowWatermark() ? "block" : "none";
   }
   function renderPremiumModal(){
     const unlocked = isPremiumUnlocked();
     document.getElementById("premiumModalLocked").style.display = unlocked ? "none" : "block";
     document.getElementById("premiumModalUnlocked").style.display = unlocked ? "block" : "none";
     if(unlocked){
+      const tier = getPremiumTier();
+      const label = tier==="sponsor"
+        ? "✓ プレミアム機能が有効です（スポンサー特典）"
+        : "✓ プレミアム機能が有効です";
+      const unlockedBox = document.querySelector("#premiumModalUnlocked .premium-unlocked-box");
+      if(unlockedBox) unlockedBox.firstChild.textContent = label;
       document.getElementById("premiumUnlockedEmail").textContent = getPremiumEmail();
+      const wmNote2 = document.getElementById("premiumSponsorWatermarkNote");
+      if(wmNote2) wmNote2.style.display = tier==="sponsor" ? "block" : "none";
     } else {
       document.getElementById("premiumCheckStatus").textContent = "";
     }
@@ -4831,7 +4857,7 @@
       if(!res.ok) throw new Error("http "+res.status);
       const data = await res.json();
       if(data && data.valid){
-        setPremiumUnlocked(email);
+        setPremiumUnlocked(email, data.tier);
         applyPremiumGates();
         renderPremiumModal();
       } else {

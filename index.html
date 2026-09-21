@@ -99,6 +99,15 @@
   button.btn.ghost:hover{background:var(--accent2-soft);}
   button.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
   #btnViewLockToggle.view-lock-active{background:var(--warn);color:#fff;border-color:var(--warn);}
+  .premium-status-badge{
+    background:var(--accent2-soft);color:var(--accent2);border:1px solid var(--accent2);
+    font-weight:700;font-size:12.5px;
+  }
+  .premium-status-badge:hover{background:var(--accent2);color:#fff;}
+  .premium-status-badge.tier-sponsor{
+    background:#b3185a12;color:var(--accent-ink);border-color:var(--accent);
+  }
+  .premium-status-badge.tier-sponsor:hover{background:var(--accent);color:#fff;}
   button.btn.danger:hover{background:#c81e3912;}
   button.btn:disabled{opacity:.4;cursor:not-allowed;}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
@@ -380,6 +389,7 @@
     </div>
   </div>
   <div class="row">
+    <button class="btn premium-status-badge" id="btnPremiumStatus" style="display:none;" title="クリックしてログアウトなどの操作ができます"></button>
     <button class="btn secondary" id="btnShortcutHelp">？ ショートカット</button>
     <button class="btn secondary" id="btnViewLockToggle" title="オンにすると、タイムテーブルをドラッグで動かせなくなります（確認だけしたいときに便利です）">編集ロック：OFF</button>
     <button class="btn secondary" id="btnAdminToggle">管理者ログイン</button>
@@ -4820,6 +4830,23 @@
     });
     const wmNote = document.getElementById("staffXlsxWatermarkNote");
     if(wmNote) wmNote.style.display = shouldShowWatermark() ? "block" : "none";
+    updatePremiumStatusBadge();
+  }
+  // Header badge showing who's currently unlocking premium (at a glance,
+  // without needing to open the modal) and a one-click way back into the
+  // modal, where the actual logout button lives.
+  function updatePremiumStatusBadge(){
+    const btn = document.getElementById("btnPremiumStatus");
+    if(!btn) return;
+    if(!isPremiumUnlocked()){
+      btn.style.display = "none";
+      return;
+    }
+    const tier = getPremiumTier();
+    const email = getPremiumEmail();
+    btn.style.display = "";
+    btn.classList.toggle("tier-sponsor", tier==="sponsor");
+    btn.textContent = (tier==="sponsor" ? "スポンサー：" : "プレミアム：") + email;
   }
   function renderPremiumModal(){
     const unlocked = isPremiumUnlocked();
@@ -4898,6 +4925,7 @@
     applyPremiumGates();
     renderPremiumModal();
   });
+  document.getElementById("btnPremiumStatus").addEventListener("click", openPremiumModal);
   applyPremiumGates();
 
   document.getElementById("btnAdminToggle").addEventListener("click", ()=>{

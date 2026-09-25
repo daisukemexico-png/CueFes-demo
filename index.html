@@ -650,6 +650,18 @@
             <input type="file" id="ocrFileInput" accept="image/*" style="width:auto;">
             <button class="btn secondary" id="btnOcrRun" disabled>画像を解析してテキスト抽出</button>
           </div>
+          <div class="row" style="margin-top:8px;align-items:center;">
+            <label for="ocrColSelect" style="width:auto;">表の列数</label>
+            <select id="ocrColSelect" style="width:auto;">
+              <option value="1" selected>1列（分割しない）</option>
+              <option value="2">2列に分けて読む</option>
+              <option value="3">3列に分けて読む</option>
+              <option value="4">4列に分けて読む</option>
+              <option value="5">5列に分けて読む</option>
+              <option value="6">6列に分けて読む</option>
+            </select>
+          </div>
+          <div class="helptext">会場ごとの表が横に並んでいる画像は、表の数を選ぶと1つずつ切り分けて読み取ります（例：4会場が横並びなら「4列」）。1つの表の中の「時刻・出演者・物販」の並びは数えません。</div>
           <div class="row" style="margin-top:8px;">
             <label style="width:auto;">読み取りレイアウト</label>
             <select id="ocrPsmSelect" style="width:260px;">
@@ -1716,7 +1728,7 @@
           logger: m=>{
             if(!ocrStatusElRef) return;
             if(m.status === "recognizing text"){
-              ocrStatusElRef.textContent = "画像を解析中… "+Math.round((m.progress||0)*100)+"%";
+              ocrStatusElRef.textContent = "画像を解析中"+ocrProgressLabel+"… "+Math.round((m.progress||0)*100)+"%";
             } else if(m.status){
               ocrStatusElRef.textContent = m.status+"…";
             }
@@ -1743,13 +1755,282 @@
     statusEl.textContent = "画像を解析中… 0%";
     try{
       await worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: "1" });
-      const result = await worker.recognize(file);
-      document.getElementById("ocrRawText").value = (result.data && result.data.text) ? result.data.text : "";
-      statusEl.textContent = "✓ 解析完了。テキストを確認・修正してから「候補を抽出」を押してください。";
+      const colCount = getOcrColumnCount();
+      let ocrText;
+      try{
+        ocrText = await recognizeOcrColumns(worker, file, colCount);
+      }catch(splitErr){
+        // e.g. an image format the browser can't draw onto a canvas
+        if(colCount > 1) throw splitErr;
+        console.warn(splitErr);
+        const result = await worker.recognize(file);
+        ocrText = (result.data && result.data.text) ? result.data.text : "";
+      }
+      document.getElementById("ocrRawText").value = ocrText;
+      statusEl.textContent = "✓ 解析完了。テキストを確認・修正してから「候補を抽出」を押してください。"+(colCount>1 ? "（"+colCount+"列に分けて読み取りました）" : "");
     }catch(e){
       console.error(e);
       statusEl.textContent = "解析に失敗しました: "+e.message;
     }
+  }
+
+  // ---------- OCR: split a multi-table image into columns ----------
+  // Many flyers put one timetable per venue side by side (e.g. 4 venues in a
+  // row). Reading the whole image at once makes Tesseract merge the rows of
+  // neighbouring tables into one line, so the user can pick how many tables
+  // are lined up horizontally (#ocrColSelect) and each one is cropped and
+  // read on its own, left to right.
+  //
+  // Where to cut: around each equal-width split point we look for the
+  // vertical band with the least "text-like" detail. Text strokes create
+  // lots of sharp top-to-bottom brightness changes; the gap between two
+  // tables (and the empty cell padding on both sides of it) creates very few,
+  // even on a coloured or textured background. If nothing stands out, the
+  // equal-width point is used as-is.
+  //
+  // The text of each column is joined into #ocrRawText with a separator line
+  // ("===== 列2 =====") so that re-running "候補を抽出" on hand-edited text
+  // still knows where one table ends and the next begins.
+  let ocrProgressLabel = "";
+  const OCR_COL_SEP_RE = /^=+\s*列\s*(\d+)\s*=+$/;
+  function ocrColSepLine(n){ return "===== 列"+n+" ====="; }
+  function getOcrColumnCount(){
+    const el = document.getElementById("ocrColSelect");
+    const n = parseInt(el && el.value, 10);
+    return (n>=1 && n<=6) ? n : 1;
+  }
+
+  function loadImageForOcr(file){
+    return new Promise((resolve, reject)=>{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = ()=>{ resolve({ img, url }); };
+      img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error("画像を読み込めませんでした")); };
+      img.src = url;
+    });
+  }
+
+  // Returns the x positions (in original image pixels) of the n-1 cuts.
+  function findOcrColumnCuts(img, n){
+    const W = img.naturalWidth, H = img.naturalHeight;
+    if(n<=1) return [];
+    const scale = Math.min(1, 800/W);
+    const w = Math.max(1, Math.round(W*scale)), h = Math.max(2, Math.round(H*scale));
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext("2d", { willReadFrequently:true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const prof = new Float64Array(w);
+    let prevRow = null;
+    for(let y=0;y<h;y++){
+      const row = new Float64Array(w);
+      for(let x=0;x<w;x++){
+        const i = (y*w+x)*4;
+        row[x] = data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
+        if(prevRow && Math.abs(row[x]-prevRow[x]) > 40) prof[x]++;
+      }
+      prevRow = row;
+    }
+    const k = Math.max(3, Math.round(w*0.02)) | 1, half = (k-1)/2;
+    const sm = new Float64Array(w);
+    for(let x=0;x<w;x++){
+      let sum = 0, cnt = 0;
+      for(let j=x-half;j<=x+half;j++){ if(j>=0 && j<w){ sum += prof[j]; cnt++; } }
+      sm[x] = sum/cnt;
+    }
+    const cuts = [];
+    for(let i=1;i<n;i++){
+      const c = w*i/n, r = (w/n)*0.35;
+      const a = Math.max(1, Math.floor(c-r)), b = Math.min(w-2, Math.ceil(c+r));
+      let best = Math.round(c), bestVal = Infinity;
+      for(let x=a;x<=b;x++){ if(sm[x] < bestVal){ bestVal = sm[x]; best = x; } }
+      cuts.push(Math.round(best/scale));
+    }
+    return cuts;
+  }
+
+  // Crops one column and enlarges it: Tesseract reads small Japanese text on
+  // flyers far more reliably when each column is about 1100px wide. Also used
+  // with n=1 (the whole image), where it just converts to grayscale.
+  function cropOcrColumn(img, x0, x1){
+    const H = img.naturalHeight, cw = Math.max(1, x1-x0);
+    let scale = Math.min(3, Math.max(1, 1100/cw));
+    scale = Math.min(scale, Math.sqrt(16000000/(cw*H))); // stay under mobile canvas limits
+    scale = Math.max(scale, 0.25);
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(cw*scale));
+    cv.height = Math.max(1, Math.round(H*scale));
+    const ctx = cv.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, x0, 0, cw, H, 0, 0, cv.width, cv.height);
+    // Grayscale: white lettering on coloured header bars (the venue names)
+    // is picked up much more often once the colour is taken out.
+    try{
+      const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data;
+      for(let i=0;i<d.length;i+=4){
+        const g = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+        d[i] = d[i+1] = d[i+2] = g;
+      }
+      ctx.putImageData(id, 0, 0);
+    }catch(e){ /* keep colour if pixel access is refused */ }
+    return cv;
+  }
+
+  // Replaces the thumbnail with one that shows where the image was cut, so
+  // the user can tell at a glance whether the split landed between tables.
+  function renderOcrSplitPreview(img, xs){
+    const wrap = document.getElementById("ocrPreviewImgWrap");
+    if(!wrap) return;
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const tw = Math.min(520, W), th = Math.round(H*tw/W);
+    const cv = document.createElement("canvas");
+    cv.width = tw; cv.height = th;
+    const ctx = cv.getContext("2d");
+    ctx.drawImage(img, 0, 0, tw, th);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#b3185a";
+    for(let i=1;i<xs.length-1;i++){
+      const x = Math.round(xs[i]*tw/W)+0.5;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, th); ctx.stroke();
+    }
+    ctx.font = "bold 14px sans-serif";
+    for(let i=0;i<xs.length-1;i++){
+      const x = Math.round(xs[i]*tw/W)+6;
+      ctx.fillStyle = "#b3185a"; ctx.fillRect(x-2, 4, 26, 20);
+      ctx.fillStyle = "#ffffff"; ctx.fillText(String(i+1), x+4, 19);
+    }
+    const out = document.createElement("img");
+    out.src = cv.toDataURL("image/jpeg", 0.85);
+    out.style.maxWidth = "100%"; out.style.width = tw+"px";
+    out.style.borderRadius = "8px"; out.style.border = "1px solid var(--border)";
+    const cap = document.createElement("div");
+    cap.className = "helptext";
+    cap.style.marginTop = "4px";
+    cap.textContent = "赤い線の位置で"+(xs.length-1)+"つに分けて読み取りました。線が表の途中にかかっている場合は、列数を見直してください。";
+    wrap.innerHTML = "";
+    wrap.appendChild(out);
+    wrap.appendChild(cap);
+  }
+
+  async function recognizeOcrColumns(worker, file, n){
+    const { img, url } = await loadImageForOcr(file);
+    try{
+      const cuts = findOcrColumnCuts(img, n);
+      const xs = [0].concat(cuts, [img.naturalWidth]);
+      if(n>1) renderOcrSplitPreview(img, xs);
+      const parts = [];
+      for(let i=0;i<n;i++){
+        ocrProgressLabel = n>1 ? "（"+(i+1)+"/"+n+"列目）" : "";
+        if(ocrStatusElRef) ocrStatusElRef.textContent = "画像を解析中"+ocrProgressLabel+"… 0%";
+        const cv = cropOcrColumn(img, xs[i], xs[i+1]);
+        const result = await worker.recognize(cv);
+        const t = (result.data && result.data.text) ? result.data.text.trim() : "";
+        parts.push(n>1 ? ocrColSepLine(i+1)+"\n"+t : t);
+      }
+      return parts.join("\n\n");
+    } finally {
+      ocrProgressLabel = "";
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  // Wraps parseOcrText with the handling a multi-table flyer needs:
+  //  - text split by "===== 列N =====" lines is parsed one table at a time,
+  //    so a stage heading in one table never leaks into the next;
+  //  - if a table's heading contains the name of a registered stage/特典会場,
+  //    rows without a lane get that name;
+  //  - a second time range on the same line (the 物販 time next to the
+  //    performance time) is cut off the artist name, along with anything
+  //    after it (e.g. the 物販 area letter);
+  //  - rows that look like 物販 info or headings rather than performances are
+  //    marked `suspect` so the preview leaves them unchecked.
+  function parseOcrTextMulti(text){
+    const lines = (text||"").split(/\n/);
+    const chunks = [];
+    let cur = { col:0, lines:[] };
+    lines.forEach(l=>{
+      const m = l.trim().match(OCR_COL_SEP_RE);
+      if(m){
+        if(cur.lines.some(x=>x.trim())) chunks.push(cur);
+        cur = { col:parseInt(m[1],10), lines:[] };
+      } else {
+        cur.lines.push(l);
+      }
+    });
+    if(cur.lines.some(x=>x.trim())) chunks.push(cur);
+    const multi = chunks.some(c=>c.col>0);
+    const out = [];
+    chunks.forEach(c=>{
+      const rows = parseOcrText(c.lines.join("\n"));
+      const guess = multi ? guessOcrLaneFromHeading(c.lines) : "";
+      rows.forEach(r=>{
+        cleanOcrRowName(r);
+        if(guess && !r.lane) r.lane = guess;
+        if(c.col>0) r.raw = "["+c.col+"列目] "+r.raw;
+      });
+      markSuspectOcrRows(rows);
+      rows.forEach(r=>out.push(r));
+    });
+    return out;
+  }
+
+  const OCR_RANGE_RE = /(\d{1,2})\s*[:：]\s*(\d{2})\s*[〜~\-–—ー]{1,2}\s*(\d{1,2})\s*[:：]\s*(\d{2})/;
+  const OCR_NAME_TRIM_RE = /^[\s\-–—ー:：|｜／\/、,・•●○◎\[\]【】()（）]+|[\s\-–—ー:：|｜／\/、,・•●○◎\[\]【】()（）]+$/g;
+  const OCR_NOT_A_NAME_RE = /^[\d\s:：.．,;_\-–—~〜ー=＝|｜()（）\[\]'’"Oo]*$/;
+  function cleanOcrRowName(r){
+    let name = (r.name || "").replace(/\s*[|｜]\s*/g, "   ");
+    // Cells of a table come out separated by long runs of spaces; the first
+    // cell that isn't just digits/punctuation is the artist name.
+    const cells = name.split(/\s{3,}/).map(c=>c.trim()).filter(c=>c && !OCR_NOT_A_NAME_RE.test(c));
+    if(cells.length) name = cells[0];
+    const m = name.match(OCR_RANGE_RE);
+    if(m){
+      const before = name.slice(0, m.index).replace(OCR_NAME_TRIM_RE,"").trim();
+      name = before || name.replace(OCR_RANGE_RE,"").replace(/[\(（]\s*\d{1,3}\s*(?:分|min|m)?\s*[\)）]/gi,"");
+    }
+    // trailing 物販 area label such as "A(近松)" / "B(actor下北沢 2階)" / "中物販A"
+    name = name.replace(/\s+(?:中物販|前物販|物販)?[A-Z]\s*[\(（][^)）]*[\)）]?\s*$/,"");
+    name = name.replace(/\s+(?:中物販|前物販)[A-Z]\s*$/,"");
+    r.name = name.replace(OCR_NAME_TRIM_RE,"").trim();
+  }
+
+  function normalizeOcrKey(s){
+    return String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
+  }
+  function guessOcrLaneFromHeading(lines){
+    const lanes = (state.stages||[]).concat(state.tokutenSpots||[])
+      .map(l=>l.name).filter(n=>normalizeOcrKey(n).length>=2)
+      .sort((a,b)=>normalizeOcrKey(b).length-normalizeOcrKey(a).length);
+    if(!lanes.length) return "";
+    for(const l of lines){
+      if(OCR_RANGE_RE.test(l)) break; // only look above the first timetable row
+      const key = normalizeOcrKey(l);
+      const hit = lanes.find(n=>key.includes(normalizeOcrKey(n)));
+      if(hit) return hit;
+    }
+    return "";
+  }
+
+  function markSuspectOcrRows(rows){
+    const junkNameRe = /^(?:(?:中物販|前物販|物販)?[A-Z]|[A-Z]\s*[\(（].*|OPEN|CLOSE|調整|転換|休憩|物販|終演後|終演後物販|入場|開場|開演)$/i;
+    const toMin = t=>{ const m = /^(\d{1,2}):(\d{2})$/.exec(t||""); return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : null; };
+    rows.forEach((r,i)=>{
+      const name = (r.name||"").trim();
+      if(!name || junkNameRe.test(name) || OCR_NOT_A_NAME_RE.test(name)){ r.suspect = true; return; }
+      // A time range that sat on its own line (name taken from the line below,
+      // shown as "A / B" in raw) and that starts later than a row listed after
+      // it is almost always a 物販 time, not a performance slot.
+      if(/ \/ /.test(r.raw||"")){
+        const s = toMin(r.start);
+        if(s!==null && rows.slice(i+1).some(o=>o.lane===r.lane && toMin(o.start)!==null && toMin(o.start) < s)){
+          r.suspect = true;
+        }
+      }
+    });
   }
 
   // Heuristic: lines containing "HH:MM-HH:MM" are treated as a performance slot.
@@ -1848,12 +2129,12 @@
     rows.forEach(r=>{
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><input type="checkbox" data-role="include" checked style="width:auto;"></td>
+        <td><input type="checkbox" data-role="include" ${r.suspect ? "" : "checked"} style="width:auto;"></td>
         <td><input type="text" data-role="lane" value="${escapeAttr(r.lane)}" style="width:110px;"></td>
         <td><input type="text" data-role="name" value="${escapeAttr(r.name)}" list="artistNameList" autocomplete="off" style="min-width:120px;"></td>
         <td>${timeFieldHtml("start", r.start)}</td>
         <td>${timeFieldHtml("end", r.end)}</td>
-        <td class="helptext" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeAttr(r.raw)}">${escapeHtml(r.raw)}</td>
+        <td class="helptext" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeAttr(r.raw)}">${r.suspect ? '<b style="color:var(--danger);">要確認</b> ' : ""}${escapeHtml(r.raw)}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -5166,7 +5447,7 @@
   document.getElementById("btnOcrParse").addEventListener("click", ()=>{
     const text = document.getElementById("ocrRawText").value;
     const mode = document.querySelector('input[name="ocrParseMode"]:checked').value; // "time" | "nameonly"
-    const rows = mode==="nameonly" ? parseNameOnlyText(text) : parseOcrText(text);
+    const rows = mode==="nameonly" ? parseNameOnlyText(text) : parseOcrTextMulti(text);
     renderOcrPreview(rows, mode);
   });
   document.querySelectorAll('input[name="ocrParseMode"]').forEach(r=>{

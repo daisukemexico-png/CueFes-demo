@@ -121,6 +121,19 @@
   .chip button.chip-move{color:var(--muted);font-size:11px;padding:0 2px;}
   .chip button.chip-move:disabled{opacity:.3;cursor:default;}
   .chip button.chip-move:not(:disabled):hover{color:var(--accent2);}
+  .artist-detail-panel{
+    position:fixed;top:0;right:-360px;width:340px;height:100%;background:var(--panel);
+    box-shadow:-4px 0 20px rgba(0,0,0,.18);z-index:500;transition:right .18s ease;
+    display:flex;flex-direction:column;padding:18px;box-sizing:border-box;overflow-y:auto;
+  }
+  .artist-detail-panel.open{right:0;}
+  .artist-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .artist-detail-header h3{margin:0;font-size:16px;}
+  .artist-detail-header button{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;}
+  .artist-detail-header button:hover{color:var(--danger);}
+  .artist-detail-body dt{font-size:11px;color:var(--muted);margin-top:10px;}
+  .artist-detail-body dd{margin:2px 0 0;font-size:13.5px;}
+  @media (max-width:600px){ .artist-detail-panel{width:88%;right:-90%;} }
   table.data{width:100%;border-collapse:collapse;font-size:12px;}
   table.data th,table.data td{border:1px solid var(--border);padding:7px;text-align:left;vertical-align:middle;}
   table.data th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:11px;}
@@ -154,6 +167,11 @@
   .daycard{background:var(--panel2);border:1px solid var(--border);border-radius:11px;padding:13px;}
   .timefield{display:inline-flex;align-items:center;gap:6px;flex-wrap:nowrap;}
   .timefield input[type=time]{width:auto;min-width:108px;}
+  .timefield input[data-timeinput]{width:78px;}
+  .timefield-picker-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;padding:4px 5px;display:inline-flex;align-items:center;}
+  .timefield-picker-btn:hover{color:var(--accent2);border-color:var(--accent2);}
+  .timefield-picker-popover{position:absolute;z-index:400;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;box-shadow:var(--shadow-md);white-space:nowrap;}
+  .timefield-picker-popover select{width:auto;padding:3px 4px;font-size:13px;}
   .timefield-late{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);white-space:nowrap;cursor:pointer;margin:0;}
   .timefield-late input[type=checkbox]{width:auto;margin:0;}
   .helptext{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.65;}
@@ -161,6 +179,21 @@
   .status-dot.live{background:var(--danger);}
   .status-dot.upcoming{background:var(--warn);}
   .status-dot.done{background:var(--muted);}
+  .circuit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:14px;}
+  .circuit-summary{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+  .circuit-summary-item{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;}
+  .circuit-card{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--panel2);}
+  .circuit-card h4{margin:0 0 8px;font-size:13px;color:var(--muted);}
+  .circuit-card .circuit-now{font-size:15px;font-weight:700;margin-bottom:4px;}
+  .circuit-ontime-badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:100px;margin-top:6px;}
+  .circuit-ontime-badge.ok{background:#1c7a4522;color:var(--ok);}
+  .circuit-ontime-badge.late{background:#c81e3922;color:var(--danger);}
+  .circuit-ontime-badge.early{background:#0e6d8c22;color:var(--accent2);}
+  .circuit-ontime-badge.warn{background:#a6650a22;color:var(--warn);cursor:pointer;border:none;font:inherit;}
+  .circuit-delay-input-row{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  .circuit-delay-input-row .helptext{margin:0;}
+  .circuit-delay-input{padding:3px 6px;font-size:12px;}
+  .circuit-edit-delay-btn{background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;}
   .tabcontent{display:none;}
   .tabcontent.active{display:block;}
   #print-area{display:none;}
@@ -347,6 +380,9 @@
   }
   .print-watermark img{ height:14px; width:auto; }
   .print-watermark span{ font-size:9px; color:#555; white-space:nowrap; }
+    .print-list-table{ width:100%; border-collapse:collapse; margin-top:10px; }
+  .print-list-table th, .print-list-table td{ border:1px solid #999; padding:6px 8px; font-size:12px; text-align:left; }
+  .print-list-table th{ background:#eee; }
   .print-output .print-title{ font-size:17px; font-weight:bold; margin-bottom:2px; color:var(--print-title); }
   .print-output .print-sub{ font-size:11px; color:var(--print-sub); margin-bottom:10px; }
   .print-output .gantt-v .lane{ border-left:1px solid var(--print-border); }
@@ -390,6 +426,10 @@
   </div>
   <div class="row">
     <button class="btn premium-status-badge" id="btnPremiumStatus" style="display:none;" title="クリックしてログアウトなどの操作ができます"></button>
+    <button class="btn secondary" id="btnAppInfo" title="バージョン情報" style="display:inline-flex;align-items:center;gap:5px;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      環境設定
+    </button>
     <button class="btn secondary" id="btnShortcutHelp">？ ショートカット</button>
     <button class="btn secondary" id="btnViewLockToggle" title="オンにすると、タイムテーブルをドラッグで動かせなくなります（確認だけしたいときに便利です）">編集ロック：OFF</button>
     <button class="btn secondary" id="btnAdminToggle">管理者ログイン</button>
@@ -401,6 +441,31 @@
     <button class="btn danger" id="btnResetAll">全データ削除</button>
   </div>
 </header>
+
+<div id="artistDetailPanel" class="artist-detail-panel">
+  <div class="artist-detail-header">
+    <h3 id="adpName">—</h3>
+    <button type="button" id="adpClose" title="閉じる">✕</button>
+  </div>
+  <div class="artist-detail-body" id="adpBody"></div>
+</div>
+
+<div class="modal-overlay" id="appInfoModal">
+  <div class="modal-box" style="max-width:420px;">
+    <h3 style="display:flex;align-items:center;gap:10px;">
+      <img src="data:image/png;base64,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" alt="" style="height:26px;width:auto;">
+      バージョン情報
+    </h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <div><span class="helptext" style="margin:0;">バージョン</span><div style="font-size:18px;font-weight:700;">v<span id="appInfoVersion"></span></div></div>
+      <div><span class="helptext" style="margin:0;">最終更新日</span><div id="appInfoDate"></div></div>
+      <p class="helptext" style="margin-top:4px;">動作がおかしい場合は、一度「全データ削除」ではなく、ブラウザの再読み込み（リロード）をお試しください（データは消えません）。</p>
+    </div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end;">
+      <button class="btn" id="appInfoModalClose">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="shortcutHelpModal">
   <div class="modal-box" style="max-width:640px;max-height:80vh;overflow-y:auto;">
@@ -698,16 +763,16 @@
         <div><label>アーティスト名 *</label><input type="text" id="afName" list="artistNameList" autocomplete="off" placeholder="入力すると過去の候補が出ます"></div>
         <div><label>ステージ</label><select id="afStage"></select></div>
         <div><label>特典会場</label><select id="afTokuten"></select></div>
-        <div><label>ライブ開始</label><span class="timefield"><input type="time" step="300" data-role="afLiveStart"><label class="timefield-late"><input type="checkbox" data-role="afLiveStart_late">翌日</label></span></div>
-        <div><label>ライブ終了</label><span class="timefield"><input type="time" step="300" data-role="afLiveEnd"><label class="timefield-late"><input type="checkbox" data-role="afLiveEnd_late">翌日</label></span></div>
-        <div><label>特典会開始</label><span class="timefield"><input type="time" step="300" data-role="afTokutenStart"><label class="timefield-late"><input type="checkbox" data-role="afTokutenStart_late">翌日</label></span></div>
-        <div><label>特典会終了</label><span class="timefield"><input type="time" step="300" data-role="afTokutenEnd"><label class="timefield-late"><input type="checkbox" data-role="afTokutenEnd_late">翌日</label></span></div>
+        <div><label>ライブ開始</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="afLiveStart"><button type="button" class="timefield-picker-btn" data-picker-for="afLiveStart" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="afLiveStart_late">翌日</label></span></div>
+        <div><label>ライブ終了</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="afLiveEnd"><button type="button" class="timefield-picker-btn" data-picker-for="afLiveEnd" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="afLiveEnd_late">翌日</label></span></div>
+        <div><label>特典会開始</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="afTokutenStart"><button type="button" class="timefield-picker-btn" data-picker-for="afTokutenStart" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="afTokutenStart_late">翌日</label></span></div>
+        <div><label>特典会終了</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="afTokutenEnd"><button type="button" class="timefield-picker-btn" data-picker-for="afTokutenEnd" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="afTokutenEnd_late">翌日</label></span></div>
         <div><label>尺（分）</label><span class="durfield"><input type="number" id="afDuration" min="0" step="5" placeholder="20"><span>分→終了を自動計算</span></span></div>
         <div><label>転換/バッファ（分）</label><span class="durfield"><input type="number" id="afChangeover" min="0" step="5" placeholder="5"><span>分（次の枠まで）</span></span></div>
         <div><label>特典会尺（分）</label><span class="durfield"><input type="number" id="afTokutenDuration" min="0" step="5" placeholder="20"><span>分→特典会終了を自動計算</span></span></div>
         <div><label>移動時間（分）</label><span class="durfield"><input type="number" id="afMoveBuffer" min="0" step="5" placeholder="例：5"><span>ライブ⇔特典会の場所移動に必要な最短時間</span></span></div>
         <div><label>楽屋</label><select id="afGreenRoom"></select></div>
-        <div><label>入り時間</label><span class="timefield"><input type="time" step="300" data-role="afCallTime"><label class="timefield-late"><input type="checkbox" data-role="afCallTime_late">翌日</label></span></div>
+        <div><label>入り時間</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="afCallTime"><button type="button" class="timefield-picker-btn" data-picker-for="afCallTime" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="afCallTime_late">翌日</label></span></div>
         <div class="admin-field"><label>動員数</label><input type="number" id="afAudience" min="0" step="1" placeholder="人数"></div>
         <div class="admin-field"><label>チケット売上（円）</label><input type="number" id="afTicketSales" min="0" step="100" placeholder="円"></div>
         <div class="admin-field"><label>イベンター好感度</label>
@@ -847,6 +912,23 @@
         <button class="btn" data-open-premium-modal>プレミアムを確認・購入する</button>
       </div>
       <div class="premium-content">
+    <div class="card">
+      <h2>リスト形式で出力（項目の並び替え対応）</h2>
+      <p class="helptext">
+        ステージ別のガント表ではなく、アーティストを1行ずつ並べた表形式で出力します。並び替えの基準を選べるので、「入り時間順に並んだ、楽屋担当向けの一覧」のような用途に向いています。上で選択したDAYが対象になります。
+      </p>
+      <div class="row">
+        <label style="width:auto;">並び替えの基準</label>
+        <select id="printListSortKey" style="width:220px;">
+          <option value="name">アーティスト名</option>
+          <option value="liveStart" selected>時間（ライブ開始）</option>
+          <option value="tokutenSpotId">物販/特典会場</option>
+          <option value="greenRoomId">楽屋</option>
+        </select>
+      </div>
+      <button class="btn secondary" id="btnPrintList" style="font-size:15px;padding:12px 22px;margin-top:10px;">リストをPDFで出力する</button>
+    </div>
+
     <div class="card">
       <h2>PNG画像として出力</h2>
       <p class="helptext">
@@ -1027,8 +1109,8 @@
         <div><label>担当</label><select id="stLane"></select></div>
         <div><label>作業内容</label><input type="text" id="stLabel" placeholder="例：搬入、仕込み、リハーサル"></div>
         <div><label>メモ</label><input type="text" id="stMemo" placeholder="任意"></div>
-        <div><label>開始</label><span class="timefield"><input type="time" step="300" data-role="stStart"><label class="timefield-late"><input type="checkbox" data-role="stStart_late">翌日</label></span></div>
-        <div><label>終了</label><span class="timefield"><input type="time" step="300" data-role="stEnd"><label class="timefield-late"><input type="checkbox" data-role="stEnd_late">翌日</label></span></div>
+        <div><label>開始</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="stStart"><button type="button" class="timefield-picker-btn" data-picker-for="stStart" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="stStart_late">翌日</label></span></div>
+        <div><label>終了</label><span class="timefield"><input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="stEnd"><button type="button" class="timefield-picker-btn" data-picker-for="stEnd" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><label class="timefield-late"><input type="checkbox" data-role="stEnd_late">翌日</label></span></div>
       </div>
       <div class="row" style="margin-top:10px;">
         <button class="btn" id="btnAddStaffTask">＋ 作業を追加</button>
@@ -1055,6 +1137,7 @@
       <div id="clockDate" class="helptext" style="font-size:14px;"></div>
     </div>
     <div id="clockDayStatus"></div>
+    <div id="circuitStatusWrap"></div>
   </div>
 
 </main>
@@ -1069,6 +1152,11 @@
 (function(){
   "use strict";
 
+  // Date-based version string, bumped whenever a meaningful update is
+  // pushed to production — simplest thing that's self-documenting without
+  // needing a separate changelog to stay in sync with.
+  const APP_VERSION = "2026.09.27";
+  const APP_UPDATED_DATE = "2026年9月27日";
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
   const ARTIST_HISTORY_KEY = "cuefes_artist_history_v1_demo";
@@ -1368,6 +1456,85 @@
     const h = Math.floor(min/60), m = min%60;
     return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
   }
+  // Accepts whatever someone actually types into a time field — "1505",
+  // "705", "15", "15:05", full-width "１５：０５" — and turns it into a clean
+  // "HH:MM" string (00-23 hours; the separate 翌日 checkbox still covers
+  // times past midnight, exactly as before). Returns "" for anything that
+  // doesn't parse as a real time, rather than guessing. Native
+  // <input type="time"> was tried and reverted twice: Chrome's own minute
+  // segment can commit two fast keystrokes in the wrong order (typing "30"
+  // sometimes lands as "03") — a browser-level quirk with no JS-side fix,
+  // which is why typed input is handled this way instead.
+  function normalizeTypedTime(raw){
+    if(!raw) return "";
+    raw = raw.trim().replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).replace("：",":");
+    let h, m;
+    if(raw.includes(":")){
+      const parts = raw.split(":");
+      if(parts.length!==2) return "";
+      h = parseInt(parts[0],10); m = parseInt(parts[1],10);
+    } else {
+      const digits = raw.replace(/[^0-9]/g,"");
+      if(digits.length===0) return "";
+      if(digits.length<=2){ h = parseInt(digits,10); m = 0; }
+      else if(digits.length===3){ h = parseInt(digits.slice(0,1),10); m = parseInt(digits.slice(1),10); }
+      else { h = parseInt(digits.slice(0,-2),10); m = parseInt(digits.slice(-2),10); }
+    }
+    if(isNaN(h) || isNaN(m) || h<0 || h>23 || m<0 || m>59) return "";
+    return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+  }
+  // Delegated so it covers every [data-timeinput] field regardless of which
+  // form/table row it's rendered into, present or future.
+  document.addEventListener("focusout", ev=>{
+    const el = ev.target;
+    if(!el || !el.matches || !el.matches("[data-timeinput]")) return;
+    el.value = normalizeTypedTime(el.value); // clears the field silently if unparseable, same as an empty native time input
+  });
+
+  // ---------- Custom clock picker popover (mouse-friendly alternative to typing) ----------
+  // A small popover with hour/minute <select> dropdowns, opened by the clock
+  // icon next to each time field. <select> elements have none of the native
+  // time input's fast-typing quirk, since picking is just a discrete list
+  // choice — this is what gives back the "point and click a time" feel
+  // without reintroducing the typing bug.
+  let openPickerPopover = null;
+  function closeTimePickerPopover(){
+    if(openPickerPopover){ openPickerPopover.remove(); openPickerPopover = null; }
+  }
+  document.addEventListener("click", ev=>{
+    const btn = ev.target.closest(".timefield-picker-btn");
+    if(!btn){
+      if(openPickerPopover && !ev.target.closest(".timefield-picker-popover")) closeTimePickerPopover();
+      return;
+    }
+    ev.preventDefault();
+    const wasOpenForThisBtn = openPickerPopover && openPickerPopover._btnRef===btn;
+    closeTimePickerPopover();
+    if(wasOpenForThisBtn) return; // second click on the same button just closes it
+    const input = btn.previousElementSibling;
+    if(!input || !input.matches("[data-timeinput]")) return;
+    const cur = normalizeTypedTime(input.value);
+    const [curH, curM] = cur ? cur.split(":").map(Number) : [0,0];
+    const pop = document.createElement("div");
+    pop.className = "timefield-picker-popover";
+    pop._btnRef = btn;
+    const hourOpts = Array.from({length:24}, (_,h)=>`<option value="${h}" ${h===curH?"selected":""}>${String(h).padStart(2,"0")}</option>`).join("");
+    const minOpts = Array.from({length:12}, (_,i)=>i*5).map(m=>`<option value="${m}" ${m===Math.round(curM/5)*5?"selected":""}>${String(m).padStart(2,"0")}</option>`).join("");
+    pop.innerHTML = `<select class="tp-hour">${hourOpts}</select> : <select class="tp-min">${minOpts}</select>`+
+      `<button type="button" class="btn secondary tp-apply" style="margin-left:8px;padding:3px 10px;font-size:12px;">決定</button>`;
+    document.body.appendChild(pop);
+    const rect = btn.getBoundingClientRect();
+    pop.style.position = "absolute";
+    pop.style.left = (window.scrollX+rect.left)+"px";
+    pop.style.top = (window.scrollY+rect.bottom+4)+"px";
+    pop.querySelector(".tp-apply").addEventListener("click", ()=>{
+      const h = pop.querySelector(".tp-hour").value.padStart(2,"0");
+      const m = pop.querySelector(".tp-min").value.padStart(2,"0");
+      input.value = h+":"+m;
+      closeTimePickerPopover();
+    });
+    openPickerPopover = pop;
+  });
 
   // ---------- "tab-roll" time field (native <input type=time> + 翌日/next-day checkbox) ----------
   // Native time inputs only accept 00:00-23:59, but this app supports times past
@@ -1381,7 +1548,7 @@
       hhmm = minToTime(late ? min-1440 : min);
     }
     return `<span class="timefield">`+
-      `<input type="time" step="300" data-role="${role}" value="${escapeAttr(hhmm)}">`+
+      `<input type="text" inputmode="numeric" placeholder="15:05" data-timeinput data-role="${role}" value="${escapeAttr(hhmm)}"><button type="button" class="timefield-picker-btn" data-picker-for="${role}" title="時計から選ぶ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>`+
       `<label class="timefield-late" title="24時を超える深夜帯の時刻はチェック（例：翌日 01:30 = 25:30）">`+
         `<input type="checkbox" data-role="${role}_late" ${late?"checked":""}>翌日</label>`+
     `</span>`;
@@ -2044,14 +2211,19 @@
   // place so array order = display/lane order everywhere else in the app).
   // usageCheck(item) returns true if some artist currently references this
   // item, used to warn before a destructive delete.
-  function renderReorderableChipList(containerEl, list, usageCheck, onUnassign){
+  function renderReorderableChipList(containerEl, list, usageCheck, onUnassign, extraField){
     containerEl.innerHTML = "";
     list.forEach((s, idx)=>{
       const chip = document.createElement("div"); chip.className="chip";
       chip.innerHTML = `<button class="chip-move" data-dir="up" title="前に移動" ${idx===0?"disabled":""}>▲</button>`+
         `<button class="chip-move" data-dir="down" title="後ろに移動" ${idx===list.length-1?"disabled":""}>▼</button>`+
-        `<input type="text" value="${escapeAttr(s.name)}"><button class="chip-del" title="削除">✕</button>`;
+        `<input type="text" value="${escapeAttr(s.name)}">`+
+        (extraField ? `<input type="text" class="chip-extra" placeholder="${escapeAttr(extraField.placeholder)}" value="${escapeAttr(s[extraField.key]||"")}">` : "")+
+        `<button class="chip-del" title="削除">✕</button>`;
       chip.querySelector("input").addEventListener("change", e=>{ s.name=e.target.value.trim()||s.name; saveState(); renderAll(); });
+      if(extraField){
+        chip.querySelector(".chip-extra").addEventListener("change", e=>{ s[extraField.key]=e.target.value.trim(); saveState(); });
+      }
       chip.querySelectorAll(".chip-move").forEach(btn=>{
         btn.addEventListener("click", ()=>{
           const dir = btn.dataset.dir==="up" ? -1 : 1;
@@ -2090,7 +2262,8 @@
     renderReorderableChipList(
       document.getElementById("greenRoomChips"), state.greenRooms,
       s=>state.artists.some(a=>a.greenRoomId===s.id),
-      s=>state.artists.forEach(a=>{ if(a.greenRoomId===s.id) a.greenRoomId=""; })
+      s=>state.artists.forEach(a=>{ if(a.greenRoomId===s.id) a.greenRoomId=""; }),
+      { key: "address", placeholder: "住所（任意）" }
     );
   }
 
@@ -2147,7 +2320,9 @@
     const dayInfo = day.label + (day.date ? "（"+day.date+"）" : "");
     const stageNm = stageName(a.stageId) || "（未定）";
     const tokutenNm = tokutenName(a.tokutenSpotId) || "（未定）";
-    const greenRoomNm = greenRoomName(a.greenRoomId) || "（未定）";
+    const greenRoomObj = byId(state.greenRooms, a.greenRoomId);
+    const greenRoomNm = (greenRoomObj && greenRoomObj.name) || "（未定）";
+    const greenRoomAddr = greenRoomObj && greenRoomObj.address ? greenRoomObj.address : "";
     const liveInfo = (isValidTime(a.liveStart) && isValidTime(a.liveEnd))
       ? `${a.liveStart}〜${a.liveEnd}（${stageNm}${a.durationMin?"／尺"+a.durationMin+"分":""}）`
       : "（未定）";
@@ -2164,7 +2339,7 @@
       ``,
       `【アーティスト名】${a.name} 様`,
       `【会場】${state.event.venue || "（未定）"}`,
-      `【楽屋】${greenRoomNm}`,
+      `【楽屋】${greenRoomNm}${greenRoomAddr ? "（"+greenRoomAddr+"）" : ""}`,
       `【入り時間】${callInfo}`,
       `【出演（ライブ）】${liveInfo}`,
       `【物販/特典会】${tokutenInfo}`,
@@ -2538,6 +2713,7 @@
   function clearBlockSelection(){
     document.querySelectorAll(".block-selected").forEach(el=>el.classList.remove("block-selected"));
     selectedBlockInfo = null;
+    closeArtistDetailPanel();
   }
   function toggleBlockSelection(kind, id, blockEl){
     if(selectedBlockInfo && selectedBlockInfo.kind===kind && selectedBlockInfo.id===id){
@@ -2547,6 +2723,44 @@
     clearBlockSelection();
     selectedBlockInfo = { kind, id };
     blockEl.classList.add("block-selected");
+    if(kind==="artist"){
+      const a = byId(state.artists, id);
+      if(a) renderArtistDetailPanel(a);
+    }
+  }
+  function closeArtistDetailPanel(){
+    const panel = document.getElementById("artistDetailPanel");
+    if(panel) panel.classList.remove("open");
+  }
+  function renderArtistDetailPanel(a){
+    const panel = document.getElementById("artistDetailPanel");
+    if(!panel) return;
+    document.getElementById("adpName").textContent = a.name || "（無題）";
+    const day = byId(state.days, a.dayId);
+    const stageNm = stageName(a.stageId) || "（未定）";
+    const tokutenNm = tokutenName(a.tokutenSpotId) || "（未定）";
+    const greenRoomObj = byId(state.greenRooms, a.greenRoomId);
+    const greenRoomNm = (greenRoomObj && greenRoomObj.name) || "（未定）";
+    const greenRoomAddr = greenRoomObj && greenRoomObj.address ? greenRoomObj.address : "";
+    const rows = [
+      ["DAY", day ? day.label : "（未定）"],
+      ["ステージ", stageNm],
+      ["ライブ時間", (isValidTime(a.liveStart) && isValidTime(a.liveEnd)) ? `${a.liveStart}〜${a.liveEnd}` : "（未定）"],
+      ["特典会場", tokutenNm],
+      ["特典会時間", (isValidTime(a.tokutenStart) && isValidTime(a.tokutenEnd)) ? `${a.tokutenStart}〜${a.tokutenEnd}` : "（未定）"],
+      ["入り時間", isValidTime(a.callTime) ? a.callTime : "（未定）"],
+      ["楽屋", greenRoomNm + (greenRoomAddr ? "（"+greenRoomAddr+"）" : "")],
+      ["メモ", a.memo || "（なし）"],
+    ];
+    if(adminFieldsVisible()){
+      rows.push(["動員数", a.audience || "（未入力）"]);
+      rows.push(["チケット売上", a.ticketSales || "（未入力）"]);
+      rows.push(["イベンター好感度", a.favorability || "（未入力）"]);
+    }
+    document.getElementById("adpBody").innerHTML = rows.map(([label,val])=>
+      `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(val).replace(/\n/g,"<br>")}</dd>`
+    ).join("");
+    panel.classList.add("open");
   }
   function isTypingInField(){
     const el = document.activeElement;
@@ -3742,6 +3956,64 @@
     markExportedOnce();
   });
 
+  function buildPrintListArea(){
+    const area = document.getElementById("print-area");
+    area.innerHTML = "";
+    applyPrintStyleVars(area);
+    const selectedDayIds = Array.from(document.querySelectorAll(".printDayChk:checked")).map(c=>c.value);
+    const sortKey = document.getElementById("printListSortKey").value;
+    const evName = state.event.name || "（イベント名未設定）";
+    const evVenue = state.event.venue || "";
+
+    state.days.filter(d=>selectedDayIds.includes(d.id)).forEach(day=>{
+      const p = document.createElement("div");
+      p.className = "print-page";
+      const h = document.createElement("div"); h.className="print-title"; h.textContent = evName+" — 出演者リスト";
+      const sub = document.createElement("div"); sub.className="print-sub"; sub.textContent = [day.label, day.date, evVenue].filter(Boolean).join(" ・ ");
+      p.appendChild(h); p.appendChild(sub);
+
+      let items = state.artists.filter(a=>a.dayId===day.id).map(a=>({
+        a,
+        stageNm: stageName(a.stageId) || "",
+        tokutenNm: tokutenName(a.tokutenSpotId) || "",
+        greenRoomNm: greenRoomName(a.greenRoomId) || "",
+      }));
+      const sortFns = {
+        name: (x,y)=> x.a.name.localeCompare(y.a.name, "ja"),
+        liveStart: (x,y)=> (timeToMin(x.a.liveStart)??99999) - (timeToMin(y.a.liveStart)??99999),
+        tokutenSpotId: (x,y)=> x.tokutenNm.localeCompare(y.tokutenNm, "ja"),
+        greenRoomId: (x,y)=> x.greenRoomNm.localeCompare(y.greenRoomNm, "ja"),
+      };
+      items.sort(sortFns[sortKey] || sortFns.liveStart);
+
+      const table = document.createElement("table");
+      table.className = "print-list-table";
+      table.innerHTML = `<thead><tr><th>アーティスト名</th><th>ステージ</th><th>ライブ時間</th><th>物販/特典会場</th><th>特典会時間</th><th>入り時間</th><th>楽屋</th></tr></thead>`+
+        `<tbody>${items.map(({a,stageNm,tokutenNm,greenRoomNm})=>`<tr>`+
+          `<td>${escapeHtml(a.name)}</td>`+
+          `<td>${escapeHtml(stageNm)}</td>`+
+          `<td>${isValidTime(a.liveStart)&&isValidTime(a.liveEnd) ? escapeHtml(a.liveStart+"〜"+a.liveEnd) : ""}</td>`+
+          `<td>${escapeHtml(tokutenNm)}</td>`+
+          `<td>${isValidTime(a.tokutenStart)&&isValidTime(a.tokutenEnd) ? escapeHtml(a.tokutenStart+"〜"+a.tokutenEnd) : ""}</td>`+
+          `<td>${isValidTime(a.callTime) ? escapeHtml(a.callTime) : ""}</td>`+
+          `<td>${escapeHtml(greenRoomNm)}</td>`+
+        `</tr>`).join("")}</tbody>`;
+      p.appendChild(table);
+      addPrintWatermarkIfFree(p);
+      area.appendChild(p);
+    });
+
+    if(area.children.length===0){
+      area.innerHTML = `<div class="print-page"><div class="print-title">出力対象のDAYが選択されていません</div></div>`;
+    }
+  }
+  document.getElementById("btnPrintList").addEventListener("click", ()=>{
+    activePrintBuilder = buildPrintListArea;
+    buildPrintListArea();
+    window.print();
+    markExportedOnce();
+  });
+
   // ---------- PNG image export (for overlaying onto a flyer in image-editing software) ----------
   // window.print() can never produce a transparent background (that's a
   // browser-level constraint of the print pipeline, not something CSS can
@@ -4660,6 +4932,14 @@
     updateViewLockButton();
     updateClock();
     applyAdminVisibility();
+    // Keep the artist detail panel (if open) showing current data — renderAll()
+    // rebuilds the gantt DOM from scratch, so the block's own highlight is a
+    // separate, pre-existing limitation, but the panel's *content* going stale
+    // after an unrelated edit would be a new and more visible problem to add.
+    if(selectedBlockInfo && selectedBlockInfo.kind==="artist"){
+      const a = byId(state.artists, selectedBlockInfo.id);
+      if(a) renderArtistDetailPanel(a); else clearBlockSelection();
+    }
     document.title = (state.event.name?state.event.name+" - ":"")+"CueFes";
   }
 
@@ -4692,12 +4972,167 @@
     if(nowMin < startMin) return {state:"before", remain:startMin-nowMin};
     return {state:"after", remain:0};
   }
+  // ---------- Circuit status dashboard (⑩現在時刻タブの拡張) ----------
+  // For each stage/tokuten venue, shows who's on now (or coming up next) and
+  // whether they actually started on schedule. "On time" is judged against a
+  // real recorded start time (actualLiveStart/actualTokutenStart), not just
+  // guessed from the clock — nobody but a person at the venue can say
+  // whether a set truly started, so this only ever reports what's been
+  // explicitly logged via the "開始を記録" button below.
+  const ONTIME_GRACE_MIN = 2;
+  function computeLaneNowStatus(items, startKey, endKey, nowMin){
+    const scheduled = items.filter(a=>isValidTime(a[startKey]) && isValidTime(a[endKey]))
+      .map(a=>({ a, s:timeToMin(a[startKey]), e:timeToMin(a[endKey]) }))
+      .sort((x,y)=>x.s-y.s);
+    const current = scheduled.find(x=>nowMin>=x.s && nowMin<x.e);
+    if(current) return { type:"current", entry:current };
+    const next = scheduled.find(x=>x.s>nowMin);
+    if(next) return { type:"next", entry:next };
+    if(scheduled.length>0) return { type:"done" };
+    return { type:"none" };
+  }
+  // What we currently KNOW about how a lane is running: the most recently
+  // *recorded* start (scheduled time <= now, actual start logged), whichever
+  // artist that was. Unlike computeLaneNowStatus's "current artist", this
+  // deliberately keeps showing that reading after their set ends — a lane
+  // that ran 10 minutes late doesn't become "fine" again the moment the
+  // delayed artist finishes; the delay is still there until someone logs a
+  // newer start that says otherwise.
+  function computeLaneDelayInfo(items, startKey, endKey, actualKey, nowMin){
+    const scheduled = items.filter(a=>isValidTime(a[startKey]) && isValidTime(a[endKey]))
+      .map(a=>({ a, s:timeToMin(a[startKey]), e:timeToMin(a[endKey]) }))
+      .sort((x,y)=>x.s-y.s);
+    const recorded = scheduled.filter(x=>x.s<=nowMin && isValidTime(x.a[actualKey]));
+    const last = recorded[recorded.length-1];
+    if(!last) return null;
+    return { artist:last.a, delay: timeToMin(last.a[actualKey]) - last.s };
+  }
+  function delaySummaryHtml(laneName, info){
+    if(!info){
+      return `<div class="circuit-summary-item"><b>${escapeHtml(laneName)}</b><span class="circuit-ontime-badge" style="background:var(--panel2);color:var(--muted);">未記録</span></div>`;
+    }
+    let cls, label;
+    if(Math.abs(info.delay)<=ONTIME_GRACE_MIN){ cls="ok"; label="定刻通り"; }
+    else if(info.delay>0){ cls="late"; label=info.delay+"分遅れ"; }
+    else { cls="early"; label=Math.abs(info.delay)+"分早い"; }
+    return `<div class="circuit-summary-item"><b>${escapeHtml(laneName)}</b><span class="circuit-ontime-badge ${cls}">${label}</span>`+
+      `<span class="helptext" style="margin-left:6px;">（${escapeHtml(info.artist.name)} 時点）</span></div>`;
+  }
+  function renderOntimeBadge(entry, actualKey, nowMin){
+    const actual = entry.a[actualKey];
+    if(isValidTime(actual)){
+      const delay = timeToMin(actual) - entry.s;
+      let label;
+      if(Math.abs(delay)<=ONTIME_GRACE_MIN) label = `<span class="circuit-ontime-badge ok">定刻通り</span>`;
+      else if(delay>0) label = `<span class="circuit-ontime-badge late">${delay}分遅れでスタート</span>`;
+      else label = `<span class="circuit-ontime-badge early">${Math.abs(delay)}分早くスタート</span>`;
+      return label+` <button type="button" class="circuit-edit-delay-btn" data-edit-delay="${entry.a.id}" data-edit-key="${actualKey}" title="記録した分数を修正する">修正</button>`;
+    }
+    if(nowMin > entry.s + ONTIME_GRACE_MIN){
+      return `<div class="circuit-delay-input-row">`+
+        `<span class="helptext">何分遅れでスタートしましたか？</span>`+
+        `<input type="number" step="1" class="circuit-delay-input" data-delay-for="${entry.a.id}" placeholder="例：8" style="width:60px;">分`+
+        `<button type="button" class="btn secondary" data-record-start="${entry.a.id}" data-record-key="${actualKey}" data-record-scheduled="${entry.s}" style="padding:3px 10px;font-size:12px;">記録</button>`+
+      `</div>`;
+    }
+    return "";
+  }
+  function renderCircuitStatus(now, todays){
+    const wrap = document.getElementById("circuitStatusWrap");
+    if(!wrap) return;
+    wrap.innerHTML = "";
+    if(todays.length===0) return;
+    const nowMin = now.getHours()*60+now.getMinutes();
+    todays.forEach(d=>{
+      const dayArtists = state.artists.filter(a=>a.dayId===d.id);
+      const section = document.createElement("div");
+      section.className = "card";
+      let html = `<h2>${escapeHtml(d.label)}：サーキット進行状況</h2>`;
+
+      // ---- Summary: at-a-glance delay status for every lane ----
+      html += `<div class="circuit-summary">`;
+      state.stages.forEach(stage=>{
+        const items = dayArtists.filter(a=>a.stageId===stage.id);
+        const info = computeLaneDelayInfo(items, "liveStart", "liveEnd", "actualLiveStart", nowMin);
+        html += delaySummaryHtml(stage.name+"（ライブ）", info);
+      });
+      state.tokutenSpots.forEach(spot=>{
+        const items = dayArtists.filter(a=>a.tokutenSpotId===spot.id);
+        const info = computeLaneDelayInfo(items, "tokutenStart", "tokutenEnd", "actualTokutenStart", nowMin);
+        html += delaySummaryHtml(spot.name+"（特典会）", info);
+      });
+      html += `</div>`;
+
+      // ---- Detail cards: who's on now / next, per lane ----
+      html += `<div class="circuit-grid">`;
+      state.stages.forEach(stage=>{
+        const items = dayArtists.filter(a=>a.stageId===stage.id);
+        const st = computeLaneNowStatus(items, "liveStart", "liveEnd", nowMin);
+        html += `<div class="circuit-card"><h4>${escapeHtml(stage.name)}（ライブ）</h4>`;
+        if(st.type==="current"){
+          html += `<div class="circuit-now">${escapeHtml(st.entry.a.name)}</div>`+
+            `<div class="helptext">${minToTime(st.entry.s)}〜${minToTime(st.entry.e)}</div>`+
+            renderOntimeBadge(st.entry, "actualLiveStart", nowMin);
+        } else if(st.type==="next"){
+          html += `<div class="helptext">次：${escapeHtml(st.entry.a.name)}（${minToTime(st.entry.s)}〜、あと${fmtRemain(st.entry.s-nowMin)}）</div>`;
+        } else if(st.type==="done"){
+          html += `<div class="helptext">本日のライブは終了しました</div>`;
+        } else {
+          html += `<div class="helptext">出演予定なし</div>`;
+        }
+        html += `</div>`;
+      });
+      state.tokutenSpots.forEach(spot=>{
+        const items = dayArtists.filter(a=>a.tokutenSpotId===spot.id);
+        const st = computeLaneNowStatus(items, "tokutenStart", "tokutenEnd", nowMin);
+        html += `<div class="circuit-card"><h4>${escapeHtml(spot.name)}（特典会）</h4>`;
+        if(st.type==="current"){
+          html += `<div class="circuit-now">${escapeHtml(st.entry.a.name)}</div>`+
+            `<div class="helptext">${minToTime(st.entry.s)}〜${minToTime(st.entry.e)}</div>`+
+            renderOntimeBadge(st.entry, "actualTokutenStart", nowMin);
+        } else if(st.type==="next"){
+          html += `<div class="helptext">次：${escapeHtml(st.entry.a.name)}（${minToTime(st.entry.s)}〜、あと${fmtRemain(st.entry.s-nowMin)}）</div>`;
+        } else if(st.type==="done"){
+          html += `<div class="helptext">本日の特典会は終了しました</div>`;
+        } else {
+          html += `<div class="helptext">出演予定なし</div>`;
+        }
+        html += `</div>`;
+      });
+      html += `</div>`;
+      section.innerHTML = html;
+      wrap.appendChild(section);
+    });
+    wrap.querySelectorAll("[data-record-start]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const a = byId(state.artists, btn.dataset.recordStart);
+        if(!a) return;
+        const input = wrap.querySelector(`.circuit-delay-input[data-delay-for="${btn.dataset.recordStart}"]`);
+        const delayMin = input && input.value.trim()!=="" ? parseInt(input.value, 10) : 0;
+        if(isNaN(delayMin)){ alert("分数は数字で入力してください。"); return; }
+        const scheduled = parseInt(btn.dataset.recordScheduled, 10);
+        a[btn.dataset.recordKey] = minToTime(((scheduled+delayMin)%1440+1440)%1440);
+        saveState();
+        renderCircuitStatus(new Date(), todays);
+      });
+    });
+    wrap.querySelectorAll("[data-edit-delay]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const a = byId(state.artists, btn.dataset.editDelay);
+        if(!a) return;
+        a[btn.dataset.editKey] = ""; // clear the recorded start so the minutes-input prompt reappears
+        saveState();
+        renderCircuitStatus(new Date(), todays);
+      });
+    });
+  }
   function renderClockDayStatus(now){
     const wrap = document.getElementById("clockDayStatus");
     if(!wrap) return;
     const todayStr = toISODate(now);
     const nowMin = now.getHours()*60+now.getMinutes();
     const todays = state.days.filter(d=>d.date===todayStr);
+    renderCircuitStatus(now, todays);
     wrap.innerHTML = "";
     if(todays.length===0){
       const upcoming = state.days.filter(d=>d.date && d.date>=todayStr).sort((a,b)=> a.date<b.date?-1:1)[0];
@@ -4789,6 +5224,18 @@
       document.getElementById("demoBanner").style.display = "none";
     });
   }
+  document.getElementById("adpClose").addEventListener("click", clearBlockSelection);
+  document.getElementById("btnAppInfo").addEventListener("click", ()=>{
+    document.getElementById("appInfoVersion").textContent = APP_VERSION;
+    document.getElementById("appInfoDate").textContent = APP_UPDATED_DATE;
+    document.getElementById("appInfoModal").style.display = "flex";
+  });
+  document.getElementById("appInfoModalClose").addEventListener("click", ()=>{
+    document.getElementById("appInfoModal").style.display = "none";
+  });
+  document.getElementById("appInfoModal").addEventListener("click", e=>{
+    if(e.target.id === "appInfoModal") document.getElementById("appInfoModal").style.display = "none";
+  });
   document.getElementById("btnShortcutHelp").addEventListener("click", ()=>{
     document.getElementById("shortcutHelpModal").style.display = "flex";
   });

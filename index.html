@@ -258,6 +258,24 @@
   .gantt-v .block.dragging{opacity:.85;z-index:5;box-shadow:0 3px 10px #0008;}
   .gantt-v .block.duplicating{outline:2px dashed var(--accent2);outline-offset:1px;cursor:copy;}
   .gantt-v .block.block-selected{outline:2px solid var(--accent);outline-offset:1px;box-shadow:0 0 0 4px var(--accent-soft);}
+  /* ---- fit text inside short/tall blocks ---- */
+  .gantt-v .block.blk-sm{ display:flex; align-items:center; gap:6px; white-space:nowrap; padding:1px 6px; }
+  .gantt-v .block.blk-sm.has-toolbar{ padding-top:1px; padding-left:40px; }
+  .gantt-v .block.blk-sm.has-copy{ padding-right:58px; }
+  .gantt-v .block.blk-sm b{ display:block; flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+  .gantt-v .block.blk-sm .t{ flex:0 0 auto; font-size:10px; }
+  .gantt-v .block.blk-sm .block-toolbar, .gantt-v .block.blk-sm .block-copy-btn{ top:50%; transform:translateY(-50%); }
+  .gantt-v .block.blk-xs b{ font-size:11px; }
+  .gantt-v .block.blk-xs .t{ font-size:9px; }
+  .gantt-v .block.blk-xs .block-toolbar button{ width:13px; height:13px; line-height:11px; font-size:8px; }
+  .gantt-v .block.blk-xs .block-copy-btn{ font-size:8px; padding:0 3px; }
+  .gantt-v .block.blk-lg b{ font-size:14px; }
+  .gantt-v .block.blk-lg .t{ font-size:12px; }
+  .gantt-v .block.changeover-block.blk-xs .t{ font-size:9px; }
+  .gantt-zoom-bar{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0 8px; font-size:12px; color:var(--muted); }
+  .gantt-zoom-bar button{ border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:6px; min-width:30px; height:28px; cursor:pointer; font-size:14px; padding:0 8px; }
+  .gantt-zoom-bar input[type=range]{ width:140px; }
+  .gantt-zoom-bar .gz-val{ min-width:44px; text-align:center; font-weight:bold; color:var(--text); }
   .first-use-hint{
     display:flex;align-items:flex-start;gap:12px;background:var(--accent2-soft);
     border:1px solid var(--accent2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text);
@@ -318,6 +336,11 @@
     .gantt-v .block .block-copy-btn{ font-size:11px; padding:3px 7px; }
     .gantt-v .block .block-toolbar button{ width:23px; height:23px; line-height:21px; font-size:13px; }
     .gantt-v .block.has-toolbar{ padding-top:27px; }
+    .gantt-v .block.blk-sm.has-toolbar{ padding-top:1px; padding-left:56px; }
+    .gantt-v .block.blk-sm.has-copy{ padding-right:74px; }
+    .gantt-v .block.blk-xs .block-toolbar button{ width:20px; height:20px; line-height:18px; font-size:11px; }
+    .gantt-v .block.blk-xs .block-copy-btn{ font-size:10px; padding:2px 5px; }
+    .gantt-zoom-bar button{ min-height:40px; min-width:44px; }
     .onboarding-step, .home-card, nav.tabs button{ min-height:40px; }
   }
   @media (max-width: 900px){
@@ -1155,8 +1178,8 @@
   // Date-based version string, bumped whenever a meaningful update is
   // pushed to production — simplest thing that's self-documenting without
   // needing a separate changelog to stay in sync with.
-  const APP_VERSION = "2026.09.27";
-  const APP_UPDATED_DATE = "2026年9月27日";
+  const APP_VERSION = "2026.11.07";
+  const APP_UPDATED_DATE = "2026年11月7日";
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
   const ARTIST_HISTORY_KEY = "cuefes_artist_history_v1_demo";
@@ -3219,6 +3242,47 @@
   // Renders one DAY's staff gantt into container. Mirrors renderGanttInto's
   // visual structure (axis column + lane columns + draggable blocks) but
   // reads state.staffTasks/state.staffLanes instead of artists/stages.
+  // ---------- Vertical time-axis zoom (screen only; print/export unaffected) ----------
+  const GANTT_ZOOM_KEY = "cuefes_gantt_zoom_demo";
+  const GANTT_ZOOM_MIN = 0.5, GANTT_ZOOM_MAX = 3;
+  let ganttZoom = 1;
+  try{
+    const z = parseFloat(localStorage.getItem(GANTT_ZOOM_KEY));
+    if(z>=GANTT_ZOOM_MIN && z<=GANTT_ZOOM_MAX) ganttZoom = z;
+  }catch(e){ /* ignore */ }
+  function setGanttZoom(z){
+    ganttZoom = Math.max(GANTT_ZOOM_MIN, Math.min(GANTT_ZOOM_MAX, Math.round(z*20)/20));
+    try{ localStorage.setItem(GANTT_ZOOM_KEY, String(ganttZoom)); }catch(e){ /* ignore */ }
+    renderAll();
+  }
+  function ganttZoomBarHtml(){
+    return `<div class="gantt-zoom-bar">縦軸（時間）の拡大：
+      <button type="button" data-gz="out" title="縮小">－</button>
+      <input type="range" data-gz="range" min="${GANTT_ZOOM_MIN}" max="${GANTT_ZOOM_MAX}" step="0.05" value="${ganttZoom}">
+      <button type="button" data-gz="in" title="拡大">＋</button>
+      <span class="gz-val">${Math.round(ganttZoom*100)}%</span>
+      <button type="button" data-gz="reset" title="100%に戻す" style="font-size:11px;">リセット</button>
+    </div>`;
+  }
+  document.addEventListener("click", ev=>{
+    const b = ev.target.closest && ev.target.closest(".gantt-zoom-bar button[data-gz]");
+    if(!b) return;
+    const m = b.getAttribute("data-gz");
+    if(m==="in") setGanttZoom(ganttZoom+0.25);
+    else if(m==="out") setGanttZoom(ganttZoom-0.25);
+    else if(m==="reset") setGanttZoom(1);
+  });
+  document.addEventListener("change", ev=>{
+    const r = ev.target.closest && ev.target.closest(".gantt-zoom-bar input[data-gz=range]");
+    if(r) setGanttZoom(parseFloat(r.value));
+  });
+  // Picks size classes so name/time always fit the block's pixel height.
+  function applyBlockFit(block, heightPx){
+    if(heightPx < 56) block.classList.add("blk-sm");
+    if(heightPx < 30) block.classList.add("blk-xs");
+    if(heightPx >= 110) block.classList.add("blk-lg");
+  }
+
   function renderStaffGanttInto(container, dayId, opts){
     opts = opts || {};
     const lanes = state.staffLanes;
@@ -3242,7 +3306,7 @@
     let pxPerMin;
     if(opts.pxPerMin) pxPerMin = opts.pxPerMin;
     else if(opts.fitHeightPx) pxPerMin = Math.max(1.0, Math.min(2.3, opts.fitHeightPx/totalMin));
-    else pxPerMin = 1.6;
+    else pxPerMin = 1.6 * (opts.useZoom ? ganttZoom : 1);
 
     const headerH = 34;
     const trackH = totalMin*pxPerMin;
@@ -3288,7 +3352,9 @@
         const block = document.createElement("div");
         block.className = "block";
         block.style.top = ((s-startMin)*pxPerMin)+"px";
-        block.style.height = Math.max((e-s)*pxPerMin-3,18)+"px";
+        const staffH = Math.max((e-s)*pxPerMin-3,18);
+        block.style.height = staffH+"px";
+        applyBlockFit(block, staffH);
         block.style.background = t.color || "#e0e0e0";
         block.innerHTML = `<b>${escapeHtml(t.label)}</b><span class="t">${t.start}–${t.end}</span>`;
         block.title = t.label+" "+t.start+"〜"+t.end+(t.memo?(" / "+t.memo):"")+(opts.interactive!==false ? "\n（ドラッグで移動／担当変更、上下端をドラッグで長さを変更できます。Alt/Optionキーを押しながらドラッグすると複製されます）" : "");
@@ -3424,11 +3490,12 @@
       const section = document.createElement("div");
       section.className = "card";
       section.innerHTML = `<h2>${escapeHtml(day.label)}${day.date?"（"+escapeHtml(day.date)+"）":""}</h2>
+        ${ganttZoomBarHtml()}
         <div class="gantt-v-wrap" id="staffGantt_${day.id}"></div>
         <h3 style="margin-top:18px;font-size:14px;">作業一覧（セルを直接編集できます）</h3>
         <div id="staffTable_${day.id}"></div>`;
       wrap.appendChild(section);
-      renderStaffGanttInto(section.querySelector(`#staffGantt_${day.id}`), day.id, {interactive: !isViewOnlyLocked()});
+      renderStaffGanttInto(section.querySelector(`#staffGantt_${day.id}`), day.id, {interactive: !isViewOnlyLocked(), useZoom:true});
       renderStaffTaskTable(section.querySelector(`#staffTable_${day.id}`), day.id);
     });
   }
@@ -3511,7 +3578,7 @@
     let pxPerMin;
     if(opts.pxPerMin) pxPerMin = opts.pxPerMin;
     else if(opts.fitHeightPx) pxPerMin = Math.max(1.0, Math.min(2.3, opts.fitHeightPx/totalMin));
-    else pxPerMin = 2.3;
+    else pxPerMin = 2.3 * (opts.useZoom ? ganttZoom : 1);
 
     const headerH = 34;
     const trackH = totalMin*pxPerMin;
@@ -3565,7 +3632,9 @@
           const block = document.createElement("div");
           block.className = "block"+stateClass;
           block.style.top = ((s-startMin)*pxPerMin)+"px";
-          block.style.height = Math.max((e-s)*pxPerMin-3,18)+"px";
+          const blkH = Math.max((e-s)*pxPerMin-3,18);
+          block.style.height = blkH+"px";
+          applyBlockFit(block, blkH);
           block.style.background = a.color;
           block.innerHTML = `<b>${escapeHtml(a.name)}</b><span class="t">${a[startKey]}–${a[endKey]}</span>`;
           block.title = a.name+" "+a[startKey]+"〜"+a[endKey]+(a.memo?(" / "+a.memo):"")+(opts.interactive!==false ? "\n（ドラッグで移動／"+(kind==="live"?"ステージ":"特典会場")+"変更、上下端をドラッグで尺を変更できます。Alt/Optionキーを押しながらドラッグすると複製されます）" : "");
@@ -3613,6 +3682,7 @@
                 copyLiveTimeToTokuten(a);
               });
               block.appendChild(copyBtn);
+              block.classList.add("has-copy");
             }
           }
           track.appendChild(block);
@@ -3622,7 +3692,9 @@
             const co = document.createElement("div");
             co.className = "block changeover-block";
             co.style.top = ((e-startMin)*pxPerMin)+"px";
-            co.style.height = Math.max(changeover*pxPerMin-3,14)+"px";
+            const coH = Math.max(changeover*pxPerMin-3,14);
+            co.style.height = coH+"px";
+            if(coH < 30) co.classList.add("blk-xs");
             co.innerHTML = `<span class="t">転換 ${changeover}分</span>`;
             co.title = "機材転換/バッファ "+changeover+"分";
             track.appendChild(co);
@@ -3688,8 +3760,8 @@
     const sub = day.date ? (" ・ "+day.date) : "";
     section.innerHTML = `<h2>${escapeHtml(day.label)}${escapeHtml(sub)} － ${label}</h2>` + statusHtml +
       `<div class="helptext">枠をドラッグすると時間の移動、隣の${laneWord}列へのドラッグで${laneWord}の変更ができます。枠の上下端をドラッグすると尺（長さ）を変更できます（いずれも5分刻み）。Alt（Windows）／Option（Mac）キーを押しながらドラッグすると、その枠を複製できます（2回出演するアーティストなどに便利です）。</div>` +
-      `<div class="gantt-v-wrap"></div>`;
-    renderGanttInto(section.querySelector(".gantt-v-wrap"), kind, day.id, opts);
+      ganttZoomBarHtml() + `<div class="gantt-v-wrap"></div>`;
+    renderGanttInto(section.querySelector(".gantt-v-wrap"), kind, day.id, Object.assign({useZoom:true}, opts));
     wrapEl.appendChild(section);
   }
 

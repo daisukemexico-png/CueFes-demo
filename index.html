@@ -272,6 +272,15 @@
   .gantt-v .block.blk-lg b{ font-size:14px; }
   .gantt-v .block.blk-lg .t{ font-size:12px; }
   .gantt-v .block.changeover-block.blk-xs .t{ font-size:9px; }
+  .daycard .day-move{ border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:6px; width:28px; height:28px; cursor:pointer; padding:0; }
+  .daycard .day-move:disabled{ opacity:.35; cursor:default; }
+  .daycard .lane-toggle-list{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
+  .daycard .lane-toggle{ display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--text); width:auto; border:1px solid var(--border); border-radius:14px; padding:2px 8px; background:var(--panel2); }
+  .daycard .lane-toggle input{ width:auto; margin:0; }
+  .daycard label.sub{ font-size:11px; color:var(--muted); display:block; margin-top:6px; }
+  .place-master-table{ width:100%; border-collapse:collapse; margin:6px 0 12px; }
+  .place-master-table th, .place-master-table td{ border-bottom:1px solid var(--border); padding:4px 6px; font-size:12px; text-align:left; }
+  .place-master-table input{ width:100%; }
   .gantt-zoom-bar{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0 8px; font-size:12px; color:var(--muted); }
   .gantt-zoom-bar button{ border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:6px; min-width:30px; height:28px; cursor:pointer; font-size:14px; padding:0 8px; }
   .gantt-zoom-bar input[type=range]{ width:140px; }
@@ -611,6 +620,7 @@
       <div class="grid cols2">
         <div><label>イベント名</label><input type="text" id="evName" placeholder="〇〇アイドルフェスティバル"></div>
         <div><label>会場</label><input type="text" id="evVenue" placeholder="〇〇ホール"></div>
+        <div><label>会場の住所（任意）</label><input type="text" id="evVenueAddress" placeholder="マスタに登録した会場名を入れると自動で入ります"></div>
       </div>
     </div>
 
@@ -640,6 +650,20 @@
       </div>
     </div>
 
+    <div class="card" id="placeMasterCard">
+      <h2>会場・楽屋マスタ（住所を保存して、次回から自動反映）</h2>
+      <p class="helptext">会場・ステージ・特典会場・楽屋の「名前と住所」をブラウザに保存しておく一覧です。上の各管理欄で住所を入れると自動で登録され、同じ名前を追加・入力したときに住所が自動で入ります。このマスタは「全データ削除」をしても残ります。</p>
+      <div id="placeMasterList"></div>
+      <div class="row" style="margin-top:6px;">
+        <select id="pmKind" style="width:110px;"></select>
+        <input type="text" id="pmName" placeholder="名前（例: 第1楽屋）" style="width:200px;">
+        <input type="text" id="pmAddress" placeholder="住所（任意）" style="width:280px;">
+        <button class="btn" id="btnPmAdd">＋ マスタに登録</button>
+        <button class="btn secondary" id="btnPmApply" title="現在のイベントで住所が空のものを、マスタの住所で埋めます">住所を現在の設定に反映</button>
+      </div>
+      <datalist id="dl_venue"></datalist><datalist id="dl_stage"></datalist><datalist id="dl_tokuten"></datalist><datalist id="dl_greenroom"></datalist>
+    </div>
+
     <div class="card">
       <h2>楽屋管理（出演者連絡シート用・全DAY共通）</h2>
       <p class="helptext">「⑨ 出演者連絡シート」でマネージャー様宛の連絡文を作る際に使う、楽屋の名前一覧です。複数のアーティストで同じ楽屋を共有する場合も、ここで一括管理できます。</p>
@@ -651,6 +675,7 @@
     </div>
   </div>
 
+  <!-- (place master card is injected into tab-settings by script) -->
   <!-- ============ TAB: DAYS / TIME SETTINGS (旧: 時計の設定) ============ -->
   <div class="tabcontent" id="tab-days">
     <div class="card">
@@ -661,9 +686,10 @@
         <button class="btn secondary" data-daycount="2">2DAYS</button>
         <button class="btn secondary" data-daycount="3">3DAYS</button>
         <button class="btn ghost" id="btnAddDay">＋ DAYを追加</button>
+        <button class="btn secondary" id="btnSortDaysByDate" title="開催日が入っているDAYを日付の早い順に並べ替えます">日付順に並べ替え</button>
       </div>
       <div class="grid cols3" id="dayCards"></div>
-      <div class="helptext">各DAYごとに日付・ライブ／特典会の時間帯（開始・終了の時計設定）を設定できます。ステージ名・特典会場名は全DAY共通です。時刻は右のスピナー/時計アイコンから選択できます（5分刻み）。24時を超える深夜開催の終了時刻などは「翌日」にチェックを入れてください（例: 翌日 01:30 = 25:30）。</div>
+      <div class="helptext">各DAYごとに日付・ライブ／特典会の時間帯（開始・終了の時計設定）を設定できます。DAYの並びは◀▶ボタンまたは「日付順に並べ替え」で変えられ、DAYを後から追加しても既存DAYのデータはそのままです。この日だけ使うステージ・特典会場・会場名も、各DAYの欄で変えられます。ステージ名・特典会場名の登録自体は全DAY共通です。時刻は右のスピナー/時計アイコンから選択できます（5分刻み）。24時を超える深夜開催の終了時刻などは「翌日」にチェックを入れてください（例: 翌日 01:30 = 25:30）。</div>
     </div>
   </div>
 
@@ -1178,8 +1204,8 @@
   // Date-based version string, bumped whenever a meaningful update is
   // pushed to production — simplest thing that's self-documenting without
   // needing a separate changelog to stay in sync with.
-  const APP_VERSION = "2026.11.07";
-  const APP_UPDATED_DATE = "2026年11月7日";
+  const APP_VERSION = "2026.11.16";
+  const APP_UPDATED_DATE = "2026年11月16日";
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
   const ARTIST_HISTORY_KEY = "cuefes_artist_history_v1_demo";
@@ -1662,22 +1688,122 @@
   function escapeAttr(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
   function escapeHtml(s){ return escapeAttr(s); }
 
+  // ---------- Place master (venue / stage / tokuten spot / green room name + address) ----------
+  // Stored under its own key so it survives "全データ削除" and is shared by every event.
+  const PLACE_MASTER_KEY = "cuefes_place_master_v1_demo";
+  const PLACE_KINDS = { venue:"会場", stage:"ステージ", tokuten:"特典会場", greenroom:"楽屋" };
+  function emptyPlaceMaster(){ const o={}; Object.keys(PLACE_KINDS).forEach(k=>o[k]=[]); return o; }
+  function loadPlaceMaster(){
+    try{
+      const p = JSON.parse(localStorage.getItem(PLACE_MASTER_KEY));
+      if(p && typeof p==="object"){
+        const o = emptyPlaceMaster();
+        Object.keys(PLACE_KINDS).forEach(k=>{ if(Array.isArray(p[k])) o[k]=p[k].filter(x=>x && x.name).map(x=>({name:String(x.name), address:String(x.address||"")})); });
+        return o;
+      }
+    }catch(e){ /* ignore */ }
+    return emptyPlaceMaster();
+  }
+  let placeMaster = loadPlaceMaster();
+  function savePlaceMaster(){ try{ localStorage.setItem(PLACE_MASTER_KEY, JSON.stringify(placeMaster)); }catch(e){ /* ignore */ } }
+  function masterFind(kind, name){ name=(name||"").trim(); return name ? placeMaster[kind].find(x=>x.name===name) : null; }
+  function masterAddress(kind, name){ const m=masterFind(kind,name); return m ? m.address : ""; }
+  function masterUpsert(kind, name, address){
+    name=(name||"").trim(); if(!name) return;
+    address=(address||"").trim();
+    const m = masterFind(kind,name);
+    if(m) m.address = address; else placeMaster[kind].push({name, address});
+    savePlaceMaster();
+  }
+  // Fills blank addresses in the current event from the master (or overwrites when asked).
+  function applyPlaceMasterToState(overwrite){
+    let changed = 0;
+    const fill = (kind, obj, key)=>{
+      const a = masterAddress(kind, obj[key==="venueAddress" ? "venue" : "name"]);
+      if(a && (overwrite || !obj[key])){ if(obj[key]!==a){ obj[key]=a; changed++; } }
+    };
+    state.stages.forEach(s=>fill("stage",s,"address"));
+    state.tokutenSpots.forEach(s=>fill("tokuten",s,"address"));
+    state.greenRooms.forEach(s=>fill("greenroom",s,"address"));
+    fill("venue", state.event, "venueAddress");
+    state.days.forEach(d=>{ if(d.venue) fill("venue", d, "venueAddress"); });
+    return changed;
+  }
+  function dayVenue(day){ return (day && day.venue) || state.event.venue || ""; }
+  function dayVenueAddress(day){ return (day && day.venue) ? (day.venueAddress||"") : (state.event.venueAddress||""); }
+  // A lane hidden for a day still shows if artists on that day are assigned to it (so nobody disappears).
+  function dayLaneVisible(day, kind, laneId){
+    if(!day) return true;
+    const hidden = kind==="live" ? day.hiddenStageIds : day.hiddenTokutenIds;
+    if(!hidden || !hidden.includes(laneId)) return true;
+    const key = kind==="live" ? "stageId" : "tokutenSpotId";
+    return state.artists.some(a=>a.dayId===day.id && a[key]===laneId);
+  }
+  function moveDay(dayId, dir){
+    const i = state.days.findIndex(d=>d.id===dayId), j = i+dir;
+    if(i<0 || j<0 || j>=state.days.length) return;
+    [state.days[i], state.days[j]] = [state.days[j], state.days[i]];
+    saveState(); renderAll();
+  }
+  function sortDaysByDate(){
+    const withIdx = state.days.map((d,i)=>({d,i}));
+    withIdx.sort((x,y)=>{
+      const a=x.d.date||"", b=y.d.date||"";
+      if(a && b) return a<b?-1:a>b?1:x.i-y.i;
+      if(a) return -1; if(b) return 1; return x.i-y.i;
+    });
+    state.days = withIdx.map(x=>x.d);
+    saveState(); renderAll();
+  }
+  function renderPlaceMasterCard(){
+    const listEl = document.getElementById("placeMasterList");
+    if(!listEl) return;
+    const kindSel = document.getElementById("pmKind");
+    if(!kindSel.options.length){
+      Object.keys(PLACE_KINDS).forEach(k=>{ const o=document.createElement("option"); o.value=k; o.textContent=PLACE_KINDS[k]; kindSel.appendChild(o); });
+    }
+    Object.keys(PLACE_KINDS).forEach(k=>{
+      const dl = document.getElementById("dl_"+k);
+      if(dl) dl.innerHTML = placeMaster[k].map(m=>`<option value="${escapeAttr(m.name)}">${escapeAttr(m.address)}</option>`).join("");
+    });
+    [["evVenue","venue"],["newStageName","stage"],["newTokutenName","tokuten"],["newGreenRoomName","greenroom"],["pmName",""]].forEach(([id,k])=>{
+      const el=document.getElementById(id); if(el && k) el.setAttribute("list","dl_"+k);
+    });
+    let html = "";
+    Object.keys(PLACE_KINDS).forEach(k=>{
+      const rows = placeMaster[k];
+      html += `<h3 style="font-size:13px;margin:10px 0 2px;">${PLACE_KINDS[k]}（${rows.length}件）</h3>`;
+      if(rows.length===0){ html += `<div class="helptext" style="margin:0 0 6px;">まだ登録がありません。</div>`; return; }
+      html += `<table class="place-master-table"><thead><tr><th style="width:34%">名前</th><th>住所</th><th style="width:150px"></th></tr></thead><tbody>` +
+        rows.map((m,i)=>`<tr data-kind="${k}" data-idx="${i}"><td><input type="text" data-f="name" value="${escapeAttr(m.name)}"></td><td><input type="text" data-f="address" value="${escapeAttr(m.address)}"></td><td><button class="btn secondary" data-act="use" style="padding:2px 8px;font-size:11px;">このイベントで使う</button> <button class="btn ghost" data-act="del" style="padding:2px 8px;font-size:11px;">削除</button></td></tr>`).join("") +
+        `</tbody></table>`;
+    });
+    listEl.innerHTML = html;
+  }
+  function usePlaceMasterEntry(kind, m){
+    if(kind==="venue"){ state.event.venue=m.name; state.event.venueAddress=m.address; }
+    else if(kind==="stage"){ if(!state.stages.some(s=>s.name===m.name)) state.stages.push({id:uid(), name:m.name, address:m.address}); }
+    else if(kind==="tokuten"){ if(!state.tokutenSpots.some(s=>s.name===m.name)) state.tokutenSpots.push({id:uid(), name:m.name, address:m.address}); }
+    else if(kind==="greenroom"){ if(!state.greenRooms.some(s=>s.name===m.name)) state.greenRooms.push({id:uid(), name:m.name, address:m.address}); }
+    saveState(); renderAll();
+  }
+
   function findOrCreateStage(name){
     name=(name||"").trim(); if(!name) return "";
     let s = state.stages.find(x=>x.name===name);
-    if(!s){ s={id:uid(), name}; state.stages.push(s); }
+    if(!s){ s={id:uid(), name, address:masterAddress("stage",name)}; state.stages.push(s); }
     return s.id;
   }
   function findOrCreateTokuten(name){
     name=(name||"").trim(); if(!name) return "";
     let s = state.tokutenSpots.find(x=>x.name===name);
-    if(!s){ s={id:uid(), name}; state.tokutenSpots.push(s); }
+    if(!s){ s={id:uid(), name, address:masterAddress("tokuten",name)}; state.tokutenSpots.push(s); }
     return s.id;
   }
   function findOrCreateGreenRoom(name){
     name=(name||"").trim(); if(!name) return "";
     let s = state.greenRooms.find(x=>x.name===name);
-    if(!s){ s={id:uid(), name}; state.greenRooms.push(s); }
+    if(!s){ s={id:uid(), name, address:masterAddress("greenroom",name)}; state.greenRooms.push(s); }
     return s.id;
   }
   function greenRoomName(id){ const g = byId(state.greenRooms, id); return g ? g.name : ""; }
@@ -2243,9 +2369,17 @@
         `<input type="text" value="${escapeAttr(s.name)}">`+
         (extraField ? `<input type="text" class="chip-extra" placeholder="${escapeAttr(extraField.placeholder)}" value="${escapeAttr(s[extraField.key]||"")}">` : "")+
         `<button class="chip-del" title="削除">✕</button>`;
-      chip.querySelector("input").addEventListener("change", e=>{ s.name=e.target.value.trim()||s.name; saveState(); renderAll(); });
+      chip.querySelector("input").addEventListener("change", e=>{
+        s.name=e.target.value.trim()||s.name;
+        if(extraField && extraField.masterKind && !s[extraField.key]){ const ma = masterAddress(extraField.masterKind, s.name); if(ma) s[extraField.key]=ma; }
+        saveState(); renderAll();
+      });
       if(extraField){
-        chip.querySelector(".chip-extra").addEventListener("change", e=>{ s[extraField.key]=e.target.value.trim(); saveState(); });
+        chip.querySelector(".chip-extra").addEventListener("change", e=>{
+          s[extraField.key]=e.target.value.trim();
+          if(extraField.masterKind && s[extraField.key]) masterUpsert(extraField.masterKind, s.name, s[extraField.key]);
+          saveState(); renderPlaceMasterCard();
+        });
       }
       chip.querySelectorAll(".chip-move").forEach(btn=>{
         btn.addEventListener("click", ()=>{
@@ -2269,25 +2403,29 @@
   function renderSettings(){
     document.getElementById("evName").value = state.event.name||"";
     document.getElementById("evVenue").value = state.event.venue||"";
+    document.getElementById("evVenueAddress").value = state.event.venueAddress||"";
     document.getElementById("evAdminPin").value = state.event.adminPin||"";
     renderDayCards();
 
     renderReorderableChipList(
       document.getElementById("stageChips"), state.stages,
       s=>state.artists.some(a=>a.stageId===s.id),
-      s=>state.artists.forEach(a=>{ if(a.stageId===s.id) a.stageId=""; })
+      s=>state.artists.forEach(a=>{ if(a.stageId===s.id) a.stageId=""; }),
+      { key: "address", placeholder: "住所（任意）", masterKind: "stage" }
     );
     renderReorderableChipList(
       document.getElementById("tokutenChips"), state.tokutenSpots,
       s=>state.artists.some(a=>a.tokutenSpotId===s.id),
-      s=>state.artists.forEach(a=>{ if(a.tokutenSpotId===s.id) a.tokutenSpotId=""; })
+      s=>state.artists.forEach(a=>{ if(a.tokutenSpotId===s.id) a.tokutenSpotId=""; }),
+      { key: "address", placeholder: "住所（任意）", masterKind: "tokuten" }
     );
     renderReorderableChipList(
       document.getElementById("greenRoomChips"), state.greenRooms,
       s=>state.artists.some(a=>a.greenRoomId===s.id),
       s=>state.artists.forEach(a=>{ if(a.greenRoomId===s.id) a.greenRoomId=""; }),
-      { key: "address", placeholder: "住所（任意）" }
+      { key: "address", placeholder: "住所（任意）", masterKind: "greenroom" }
     );
+    renderPlaceMasterCard();
   }
 
   function renderDayCards(){
@@ -2299,7 +2437,11 @@
       card.innerHTML = `
         <div class="row" style="justify-content:space-between;margin-bottom:8px;">
           <input type="text" data-role="label" value="${escapeAttr(d.label)}" style="font-weight:bold;width:100px;">
-          ${state.days.length>1 ? '<button class="del-btn" data-role="del" title="このDAYを削除">✕</button>' : ''}
+          <span style="display:flex;gap:4px;align-items:center;">
+            <button class="day-move" data-role="mvup" title="前のDAYへ（並びを入れ替え）" ${state.days[0].id===d.id?"disabled":""}>◀</button>
+            <button class="day-move" data-role="mvdn" title="後ろのDAYへ（並びを入れ替え）" ${state.days[state.days.length-1].id===d.id?"disabled":""}>▶</button>
+            ${state.days.length>1 ? '<button class="del-btn" data-role="del" title="このDAYを削除">✕</button>' : ''}
+          </span>
         </div>
         <label>開催日</label><input type="date" data-role="date" value="${escapeAttr(d.date)}" style="margin-bottom:8px;">
         <div class="grid cols2" style="margin-bottom:6px;">
@@ -2310,7 +2452,35 @@
           <div><label>特典会開始</label>${timeFieldHtml("tokutenStart", d.tokutenStart)}</div>
           <div><label>特典会終了</label>${timeFieldHtml("tokutenEnd", d.tokutenEnd)}</div>
         </div>
+        <label class="sub">この日の会場（空欄＝基本設定の会場）</label>
+        <input type="text" data-role="venue" list="dl_venue" placeholder="${escapeAttr(state.event.venue||"〇〇ホール")}" value="${escapeAttr(d.venue||"")}">
+        <input type="text" data-role="venueAddress" placeholder="この日の会場の住所（任意）" value="${escapeAttr(d.venueAddress||"")}" style="margin-top:4px;">
+        <label class="sub">この日に使うステージ（外すとこの日のライブTTに出ません）</label>
+        <div class="lane-toggle-list">${state.stages.map(s=>`<label class="lane-toggle"><input type="checkbox" data-lane="stage" value="${escapeAttr(s.id)}" ${(d.hiddenStageIds||[]).includes(s.id)?"":"checked"}>${escapeHtml(s.name)}</label>`).join("") || '<span class="helptext" style="margin:0;">ステージ未登録</span>'}</div>
+        <label class="sub">この日に使う特典会場</label>
+        <div class="lane-toggle-list">${state.tokutenSpots.map(s=>`<label class="lane-toggle"><input type="checkbox" data-lane="tokuten" value="${escapeAttr(s.id)}" ${(d.hiddenTokutenIds||[]).includes(s.id)?"":"checked"}>${escapeHtml(s.name)}</label>`).join("") || '<span class="helptext" style="margin:0;">特典会場未登録</span>'}</div>
       `;
+      card.querySelector('[data-role=mvup]').addEventListener("click", ()=> moveDay(d.id,-1));
+      card.querySelector('[data-role=mvdn]').addEventListener("click", ()=> moveDay(d.id,1));
+      card.querySelector('[data-role=venue]').addEventListener("change", e=>{
+        d.venue=e.target.value.trim();
+        if(d.venue && !d.venueAddress){ const ma=masterAddress("venue", d.venue); if(ma) d.venueAddress=ma; }
+        saveState(); renderAll();
+      });
+      card.querySelector('[data-role=venueAddress]').addEventListener("change", e=>{
+        d.venueAddress=e.target.value.trim();
+        if(d.venue && d.venueAddress) masterUpsert("venue", d.venue, d.venueAddress);
+        saveState(); renderPlaceMasterCard();
+      });
+      card.querySelectorAll('input[data-lane]').forEach(cb=>{
+        cb.addEventListener("change", ()=>{
+          const key = cb.dataset.lane==="stage" ? "hiddenStageIds" : "hiddenTokutenIds";
+          const set = new Set(d[key]||[]);
+          if(cb.checked) set.delete(cb.value); else set.add(cb.value);
+          d[key] = Array.from(set);
+          saveState(); renderAll();
+        });
+      });
       card.querySelector('[data-role=label]').addEventListener("change", e=>{ d.label=e.target.value.trim()||d.label; saveState(); renderAll(); });
       card.querySelector('[data-role=date]').addEventListener("change", e=>{ d.date=e.target.value; saveState(); renderAll(); });
       ["liveStart","liveEnd","tokutenStart","tokutenEnd"].forEach(role=>{
@@ -2346,11 +2516,12 @@
     const greenRoomObj = byId(state.greenRooms, a.greenRoomId);
     const greenRoomNm = (greenRoomObj && greenRoomObj.name) || "（未定）";
     const greenRoomAddr = greenRoomObj && greenRoomObj.address ? greenRoomObj.address : "";
+    const stageObj = byId(state.stages, a.stageId), tokutenObj = byId(state.tokutenSpots, a.tokutenSpotId);
     const liveInfo = (isValidTime(a.liveStart) && isValidTime(a.liveEnd))
-      ? `${a.liveStart}〜${a.liveEnd}（${stageNm}${a.durationMin?"／尺"+a.durationMin+"分":""}）`
+      ? `${a.liveStart}〜${a.liveEnd}（${stageNm}${a.durationMin?"／尺"+a.durationMin+"分":""}）` + (stageObj && stageObj.address ? `\n　場所：${stageObj.address}` : "")
       : "（未定）";
     const tokutenInfo = (isValidTime(a.tokutenStart) && isValidTime(a.tokutenEnd))
-      ? `${a.tokutenStart}〜${a.tokutenEnd}（${tokutenNm}${a.tokutenDurationMin?"／尺"+a.tokutenDurationMin+"分":""}）`
+      ? `${a.tokutenStart}〜${a.tokutenEnd}（${tokutenNm}${a.tokutenDurationMin?"／尺"+a.tokutenDurationMin+"分":""}）` + (tokutenObj && tokutenObj.address ? `\n　場所：${tokutenObj.address}` : "")
       : "（未定）";
     const callInfo = isValidTime(a.callTime) ? a.callTime : "（未定）";
     const subject = `【${evName}】${dayInfo} 出演スケジュールのご案内（${a.name}）`;
@@ -2361,7 +2532,7 @@
       `${dayInfo} の出演スケジュールをご案内いたします。`,
       ``,
       `【アーティスト名】${a.name} 様`,
-      `【会場】${state.event.venue || "（未定）"}`,
+      `【会場】${dayVenue(day) || "（未定）"}${dayVenueAddress(day) ? "（"+dayVenueAddress(day)+"）" : ""}`,
       `【楽屋】${greenRoomNm}${greenRoomAddr ? "（"+greenRoomAddr+"）" : ""}`,
       `【入り時間】${callInfo}`,
       `【出演（ライブ）】${liveInfo}`,
@@ -3526,7 +3697,7 @@
   function renderGanttInto(container, kind, dayId, opts){
     opts = opts || {};
     const day = byId(state.days, dayId);
-    const lanes = (kind==="live" ? state.stages : state.tokutenSpots).filter(l=> !opts.laneFilter || opts.laneFilter.has(l.id));
+    const lanes = (kind==="live" ? state.stages : state.tokutenSpots).filter(l=> (!opts.laneFilter || opts.laneFilter.has(l.id)) && dayLaneVisible(day, kind, l.id));
     const laneKey = kind==="live" ? "stageId" : "tokutenSpotId";
     const startKey = kind==="live" ? "liveStart" : "tokutenStart";
     const endKey = kind==="live" ? "liveEnd" : "tokutenEnd";
@@ -3995,7 +4166,7 @@
       h.textContent = evName+" — "+title;
       const sub = document.createElement("div");
       sub.className = "print-sub";
-      sub.textContent = [day.label, day.date, evVenue].filter(Boolean).join(" ・ ");
+      sub.textContent = [day.label, day.date, dayVenue(day) || evVenue].filter(Boolean).join(" ・ ");
       const gantt = document.createElement("div");
       gantt.className = "gantt-v-wrap";
       p.appendChild(h); p.appendChild(sub); p.appendChild(gantt);
@@ -4041,7 +4212,7 @@
       const p = document.createElement("div");
       p.className = "print-page";
       const h = document.createElement("div"); h.className="print-title"; h.textContent = evName+" — 出演者リスト";
-      const sub = document.createElement("div"); sub.className="print-sub"; sub.textContent = [day.label, day.date, evVenue].filter(Boolean).join(" ・ ");
+      const sub = document.createElement("div"); sub.className="print-sub"; sub.textContent = [day.label, day.date, dayVenue(day) || evVenue].filter(Boolean).join(" ・ ");
       p.appendChild(h); p.appendChild(sub);
 
       let items = state.artists.filter(a=>a.dayId===day.id).map(a=>({
@@ -4469,7 +4640,7 @@
         h.textContent = (state.event.name||"（イベント名未設定）")+" — "+job.title;
         const sub = document.createElement("div");
         sub.className = "print-sub";
-        sub.textContent = [job.day.label, job.day.date, state.event.venue].filter(Boolean).join(" ・ ");
+        sub.textContent = [job.day.label, job.day.date, dayVenue(job.day)].filter(Boolean).join(" ・ ");
         const gantt = document.createElement("div");
         gantt.className = "gantt-v-wrap";
         p.appendChild(h); p.appendChild(sub); p.appendChild(gantt);
@@ -5277,7 +5448,48 @@
   });
 
   document.getElementById("evName").addEventListener("change", e=>{ state.event.name=e.target.value.trim(); saveState(); renderAll(); });
-  document.getElementById("evVenue").addEventListener("change", e=>{ state.event.venue=e.target.value.trim(); saveState(); renderAll(); });
+  document.getElementById("evVenue").addEventListener("change", e=>{
+    state.event.venue=e.target.value.trim();
+    const ma = masterAddress("venue", state.event.venue);
+    if(ma && !state.event.venueAddress) state.event.venueAddress = ma;
+    saveState(); renderAll();
+  });
+  document.getElementById("evVenueAddress").addEventListener("change", e=>{
+    state.event.venueAddress=e.target.value.trim();
+    if(state.event.venue && state.event.venueAddress) masterUpsert("venue", state.event.venue, state.event.venueAddress);
+    saveState(); renderPlaceMasterCard();
+  });
+  document.getElementById("btnSortDaysByDate").addEventListener("click", sortDaysByDate);
+  document.getElementById("btnPmAdd").addEventListener("click", ()=>{
+    const k = document.getElementById("pmKind").value;
+    const n = document.getElementById("pmName").value.trim();
+    const a = document.getElementById("pmAddress").value.trim();
+    if(!n) return;
+    masterUpsert(k, n, a);
+    document.getElementById("pmName").value=""; document.getElementById("pmAddress").value="";
+    renderPlaceMasterCard();
+  });
+  document.getElementById("btnPmApply").addEventListener("click", ()=>{
+    const n = applyPlaceMasterToState(false);
+    saveState(); renderAll();
+    alert(n>0 ? n+"件の住所をマスタから反映しました。" : "反映する住所はありませんでした（住所が空で、マスタに一致する名前があるものが対象です）。");
+  });
+  document.getElementById("placeMasterList").addEventListener("change", e=>{
+    const tr = e.target.closest("tr[data-kind]"); if(!tr) return;
+    const m = placeMaster[tr.dataset.kind][parseInt(tr.dataset.idx,10)]; if(!m) return;
+    const v = e.target.value.trim();
+    if(e.target.dataset.f==="name"){ if(v) m.name=v; else e.target.value=m.name; } else m.address=v;
+    savePlaceMaster(); renderPlaceMasterCard();
+  });
+  document.getElementById("placeMasterList").addEventListener("click", e=>{
+    const b = e.target.closest("button[data-act]"); if(!b) return;
+    const tr = b.closest("tr[data-kind]"); const kind = tr.dataset.kind, idx = parseInt(tr.dataset.idx,10);
+    const m = placeMaster[kind][idx]; if(!m) return;
+    if(b.dataset.act==="del"){
+      if(!confirm("マスタから「"+m.name+"」を削除しますか？（現在のイベントの設定は変わりません）")) return;
+      placeMaster[kind].splice(idx,1); savePlaceMaster(); renderPlaceMasterCard();
+    } else usePlaceMasterEntry(kind, m);
+  });
   document.getElementById("evAdminPin").addEventListener("change", e=>{ state.event.adminPin=e.target.value.trim(); saveState(); renderAll(); });
 
   // ---------- Admin login modal ----------
@@ -5643,21 +5855,21 @@
     const inp = document.getElementById("newStageName");
     const name = inp.value.trim();
     if(!name) return;
-    state.stages.push({id:uid(), name});
+    state.stages.push({id:uid(), name, address:masterAddress("stage",name)});
     inp.value=""; saveState(); renderAll();
   });
   document.getElementById("btnAddTokuten").addEventListener("click", ()=>{
     const inp = document.getElementById("newTokutenName");
     const name = inp.value.trim();
     if(!name) return;
-    state.tokutenSpots.push({id:uid(), name});
+    state.tokutenSpots.push({id:uid(), name, address:masterAddress("tokuten",name)});
     inp.value=""; saveState(); renderAll();
   });
   document.getElementById("btnAddGreenRoom").addEventListener("click", ()=>{
     const inp = document.getElementById("newGreenRoomName");
     const name = inp.value.trim();
     if(!name) return;
-    state.greenRooms.push({id:uid(), name});
+    state.greenRooms.push({id:uid(), name, address:masterAddress("greenroom",name)});
     inp.value=""; saveState(); renderAll();
   });
 
@@ -5898,6 +6110,7 @@
     state = defaultState(); saveState(); renderAll();
   });
 
+  if(applyPlaceMasterToState(false)>0) saveState();
   renderAll();
 })();
 </script>

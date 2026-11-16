@@ -6069,7 +6069,7 @@
   document.getElementById("btnOcrCommit").addEventListener("click", ocrCommitRows);
 
   document.getElementById("btnBackupExport").addEventListener("click", ()=>{
-    downloadBlob(JSON.stringify({ formatVersion:2, state, artistHistory, artistMaster }, null, 2), (state.event.name||"timetable")+"_backup.json", "application/json");
+    downloadBlob(JSON.stringify({ formatVersion:3, state, artistHistory, artistMaster, placeMaster }, null, 2), (state.event.name||"timetable")+"_backup.json", "application/json");
   });
   document.getElementById("fileBackupImport").addEventListener("change", e=>{
     const file = e.target.files[0]; if(!file) return;
@@ -6077,12 +6077,13 @@
     reader.onload = ()=>{
       try{
         const parsed = JSON.parse(reader.result);
-        let newState = null, newHistory = null, newMaster = null;
+        let newState = null, newHistory = null, newMaster = null, newPlaces = null;
         if(parsed.state && parsed.state.days && parsed.state.stages && parsed.state.artists){
           // current backup format: { state, artistHistory, artistMaster }
           newState = parsed.state;
           if(Array.isArray(parsed.artistHistory)) newHistory = parsed.artistHistory;
           if(Array.isArray(parsed.artistMaster)) newMaster = parsed.artistMaster;
+          if(parsed.placeMaster && typeof parsed.placeMaster==='object') newPlaces = parsed.placeMaster;
         } else if(parsed.days && parsed.stages && parsed.artists){
           // older backup format: bare state object (no artist history/master database yet)
           newState = parsed;
@@ -6092,6 +6093,7 @@
         let msg = "現在のイベントデータを上書きします。よろしいですか？";
         if(newHistory) msg += "\nアーティスト実績データベース（通算実績）も、このファイルの内容で上書きされます。";
         if(newMaster) msg += "\nアーティストマスタも、このファイルの内容で上書きされます。";
+        if(newPlaces) msg += "\n会場・楽屋マスタは、このファイルの内容が追加・更新されます（今あるマスタは消えません）。";
         if(!confirm(msg)) return;
         state = normalizePrintStyle(newState);
         if(newHistory) artistHistory = newHistory;
@@ -6099,6 +6101,11 @@
         saveState();
         if(newHistory) saveArtistHistory();
         if(newMaster) saveArtistMaster();
+        if(newPlaces){
+          Object.keys(PLACE_KINDS).forEach(k=>{
+            if(Array.isArray(newPlaces[k])) newPlaces[k].forEach(m=>{ if(m && m.name) masterUpsert(k, String(m.name), String(m.address||"")); });
+          });
+        }
         renderAll();
       }catch(err){ alert("バックアップファイルの読み込みに失敗しました。"); }
     };

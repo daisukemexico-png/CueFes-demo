@@ -300,7 +300,7 @@
   /* ---- 対バンモード ---- */
   .tb-settings{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px 14px; }
   .tb-settings label{ font-size:12px; color:var(--muted); display:block; margin-bottom:3px; }
-  .tb-row{ display:grid; grid-template-columns:34px 64px minmax(140px,1fr) 92px 110px 70px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); }
+  .tb-row{ display:grid; grid-template-columns:34px 64px minmax(140px,1fr) 92px 92px 110px 70px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); }
   .tb-row.tb-head{ font-size:12px; color:var(--muted); font-weight:bold; }
   .tb-row .tb-no{ font-weight:bold; text-align:center; }
   .tb-row .tb-moves{ display:flex; gap:4px; }
@@ -3742,6 +3742,23 @@
     while(state.tokutenSpots.length < n) findOrCreateTokuten(names[state.tokutenSpots.length] || ("物販"+(state.tokutenSpots.length+1)));
     return state.tokutenSpots.slice(0,n).map(x=>x.id);
   }
+  // When a day is switched to 対バン mode, keep the timetable it already has:
+  // start = first act's start, each act's length from its own times, and any
+  // existing gap before the next act kept as that act's "後の空き".
+  function tbAdoptExisting(day){
+    const s = tbSettings(day);
+    const acts = tbOrdered(day.id);
+    acts.forEach((a,i)=>{ a.taibanOrder = i; });
+    const timed = acts.filter(a=>timeToMin(a.liveStart)!=null);
+    if(timed.length) s.start = minToTime(Math.min(...timed.map(a=>timeToMin(a.liveStart))));
+    acts.forEach((a,i)=>{
+      const st = timeToMin(a.liveStart), en = timeToMin(a.liveEnd);
+      if(st!=null && en!=null && en>st) a.durationMin = String(en-st);
+      const nx = acts[i+1] ? timeToMin(acts[i+1].liveStart) : null;
+      a.taibanGap = (en!=null && nx!=null && nx>en) ? String(nx-en) : "";
+    });
+    s.breakEvery = 0;
+  }
   function recomputeTaiban(dayId){
     const day = byId(state.days, dayId); if(!day) return;
     const s = tbSettings(day); if(!s.enabled) return;
@@ -3758,8 +3775,11 @@
       a.liveStart = minToTime(t); a.liveEnd = minToTime(t+dur);
       t += dur;
       const isLast = i===acts.length-1;
-      if(breakEvery>0 && breakMin>0 && !isLast && (i+1)%breakEvery===0){ a.changeoverMin = String(breakMin); t += breakMin; }
-      else a.changeoverMin = "";
+      let gap = parseInt(a.taibanGap,10)||0;
+      if(breakEvery>0 && breakMin>0 && !isLast && (i+1)%breakEvery===0) gap += breakMin;
+      if(isLast) gap = 0;
+      a.changeoverMin = gap>0 ? String(gap) : "";
+      t += gap;
     });
     // merch lanes
     const laneIds = tbLaneIds(s);
@@ -3853,7 +3873,7 @@
         <label style="width:auto;margin:0">DAY <select id="tbDay">${state.days.map(d=>`<option value="${d.id}" ${d.id===day.id?"selected":""}>${escapeHtml(d.label)}${d.date?"（"+escapeHtml(d.date)+"）":""}</option>`).join("")}</select></label>
         <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:bold;color:var(--text)"><input type="checkbox" id="tbEnabled" ${s.enabled?"checked":""} style="width:auto">このDAYを対バンモードにする</label>
       </div>
-      ${s.enabled ? "" : '<p class="helptext" style="margin-top:10px">チェックを入れると、このDAYの出演者の時間が下の設定から自動計算されます（④⑤でドラッグした時間は、設定を変えたときに計算し直されます）。</p>'}
+      ${s.enabled ? "" : '<p class="helptext" style="margin-top:10px">チェックを入れると、今のタイムテーブル（出演順・開演時刻・各組の持ち時間・組と組の間の空き）をそのまま引き継いで、以降は下の設定から自動計算します。物販と楽屋の時間はルールに沿って計算し直されます。④⑤でドラッグした時間は、設定を変えたときに計算し直されます。</p>'}
     </div>`;
     if(s.enabled){
       html += `<div class="card"><h2>進行のルール</h2><div class="tb-settings">
@@ -3872,15 +3892,16 @@
         <div><label>楽屋に入る（出演の何分前）</label>${tbSelect("roomBefore", s.roomBefore, range(30,120,10,v=>v+"分前"))}</div>
         <div><label>楽屋を出る（物販終了の何分後）</label>${tbSelect("roomAfter", s.roomAfter, range(0,30,5,v=>v+"分後"))}</div>
       </div>
-      <p class="helptext">同じ物販レーンは前の物販から5分以上空けます。希望の時間にレーンが空いていないときは、先に空くレーンに回します。深夜は「25:00」のように入力できます。入り時間は「楽屋に入る時刻」と同じに設定されます。</p></div>`;
+      <p class="helptext">「後の空き」はその組の出演後に入れる空き時間です（調整のルールとは別に足されます）。同じ物販レーンは前の物販から5分以上空けます。希望の時間にレーンが空いていないときは、先に空くレーンに回します。深夜は「25:00」のように入力できます。入り時間は「楽屋に入る時刻」と同じに設定されます。</p></div>`;
 
       html += `<div class="card"><h2>出演順（${acts.length}組）</h2>
-        <div class="tb-row tb-head"><span>順</span><span>並べ替え</span><span>出演者</span><span>持ち時間</span><span class="tb-merch">${s.merchMode==="manual"?"物販開始（手入力）":"物販"}</span><span class="tb-del"></span></div>
+        <div class="tb-row tb-head"><span>順</span><span>並べ替え</span><span>出演者</span><span>持ち時間</span><span>後の空き</span><span class="tb-merch">${s.merchMode==="manual"?"物販開始（手入力）":"物販"}</span><span class="tb-del"></span></div>
         ${acts.map((a,i)=>`<div class="tb-row" data-tbid="${a.id}">
           <span class="tb-no">${i+1}</span>
           <span class="tb-moves"><button type="button" data-tbmove="-1" aria-label="ひとつ前へ" ${i===0?"disabled":""}>↑</button><button type="button" data-tbmove="1" aria-label="ひとつ後ろへ" ${i===acts.length-1?"disabled":""}>↓</button></span>
           <input type="text" data-tbf="name" value="${escapeAttr(a.name)}" aria-label="出演者名">
           <span class="durfield"><input type="number" min="5" step="5" data-tbf="durationMin" value="${escapeAttr(a.durationMin||s.defaultDur)}" aria-label="持ち時間"><span>分</span></span>
+          <span class="durfield"><input type="number" min="0" step="5" data-tbf="taibanGap" value="${escapeAttr(a.taibanGap||"")}" placeholder="0" aria-label="この組のあとの空き時間"><span>分</span></span>
           <span class="tb-merch">${s.merchMode==="manual" ? `<input type="text" inputmode="numeric" placeholder="空欄＝出演5分後" data-tbf="taibanMerchStart" value="${escapeAttr(a.taibanMerchStart||"")}">` : `<span style="font-size:12px;color:var(--muted)">${a.tokutenStart?escapeHtml(tokutenName(a.tokutenSpotId)+" "+a.tokutenStart):""}</span>`}</span>
           <span class="tb-del"><button type="button" class="btn ghost" data-tbdel="1" style="padding:4px 8px;font-size:12px">削除</button></span>
         </div>`).join("")}
@@ -3919,7 +3940,7 @@
       if(el.id==="tbDay"){ taibanDayId = el.value; renderTaibanTab(); return; }
       if(el.id==="tbEnabled"){
         s.enabled = el.checked;
-        if(s.enabled){ tbRenumber(day.id); recomputeTaiban(day.id); }
+        if(s.enabled){ tbAdoptExisting(day); recomputeTaiban(day.id); }
         saveState(); renderAll(); return;
       }
       if(el.dataset.tbset){ const k=el.dataset.tbset; s[k] = (k==="stageId"||k==="merchMode") ? el.value : parseInt(el.value,10); return tbChanged(day.id); }
@@ -3930,6 +3951,7 @@
         const f = el.dataset.tbf;
         if(f==="name") a.name = el.value.trim() || a.name;
         else if(f==="durationMin") a.durationMin = String(Math.max(5, parseInt(el.value,10)||s.defaultDur));
+        else if(f==="taibanGap") a.taibanGap = String(Math.max(0, parseInt(el.value,10)||0));
         else if(f==="taibanMerchStart") a.taibanMerchStart = el.value.trim() ? (tbNormTime(el.value)||"") : "";
         tbChanged(day.id);
       }

@@ -281,6 +281,18 @@
   .place-master-table{ width:100%; border-collapse:collapse; margin:6px 0 12px; }
   .place-master-table th, .place-master-table td{ border-bottom:1px solid var(--border); padding:4px 6px; font-size:12px; text-align:left; }
   .place-master-table input{ width:100%; }
+  /* ---- zoom: widen lanes and scale text together with the time axis ---- */
+  .gantt-v.zoomable .lane{ flex:0 0 calc(var(--lane-base,170px) * var(--gzw,1)); width:calc(var(--lane-base,170px) * var(--gzw,1)); }
+  .gantt-v.zoomable .lane .lane-header{ font-size:calc(13px * var(--gzf,1)); }
+  .gantt-v.zoomable .axis-col .tick{ font-size:calc(10px * var(--gzf,1)); }
+  .gantt-v.zoomable .block b{ font-size:calc(12px * var(--gzf,1)); }
+  .gantt-v.zoomable .block .t{ font-size:calc(10px * var(--gzf,1)); }
+  .gantt-v.zoomable .block.blk-sm b{ font-size:calc(12px * var(--gzf,1)); }
+  .gantt-v.zoomable .block.blk-sm .t{ font-size:calc(10px * var(--gzf,1)); }
+  .gantt-v.zoomable .block.blk-xs b{ font-size:calc(11px * var(--gzf,1)); }
+  .gantt-v.zoomable .block.blk-xs .t{ font-size:calc(9px * var(--gzf,1)); }
+  .gantt-v.zoomable .block.blk-lg b{ font-size:calc(14px * var(--gzf,1)); }
+  .gantt-v.zoomable .block.blk-lg .t{ font-size:calc(12px * var(--gzf,1)); }
   .gantt-zoom-bar{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0 8px; font-size:12px; color:var(--muted); }
   .gantt-zoom-bar button{ border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:6px; min-width:30px; height:28px; cursor:pointer; font-size:14px; padding:0 8px; }
   .gantt-zoom-bar input[type=range]{ width:140px; }
@@ -368,6 +380,7 @@
     .grid.cols2, .grid.cols3, .grid.cols4{ grid-template-columns:1fr; }
     .home-grid{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); }
     .gantt-v .lane{ flex:0 0 140px; width:140px; }
+    .gantt-v{ --lane-base:140px; }
     .gantt-v .axis-col{ width:46px; flex:0 0 46px; }
     table.data{ font-size:11.5px; }
     table.data th, table.data td{ padding:5px; }
@@ -375,6 +388,7 @@
   }
   @media (orientation: portrait) and (min-width: 600px){
     .gantt-v .lane{ flex:0 0 148px; width:148px; }
+    .gantt-v{ --lane-base:148px; }
   }
   .unscheduled-tray{border:1px dashed var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px;background:var(--panel2);}
   .unscheduled-tray-label{font-size:12px;color:var(--muted);margin-bottom:6px;}
@@ -1204,8 +1218,8 @@
   // Date-based version string, bumped whenever a meaningful update is
   // pushed to production — simplest thing that's self-documenting without
   // needing a separate changelog to stay in sync with.
-  const APP_VERSION = "2026.11.16";
-  const APP_UPDATED_DATE = "2026年11月16日";
+  const APP_VERSION = "2026.11.23";
+  const APP_UPDATED_DATE = "2026年11月23日";
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
   const ARTIST_HISTORY_KEY = "cuefes_artist_history_v1_demo";
@@ -3448,6 +3462,17 @@
     if(r) setGanttZoom(parseFloat(r.value));
   });
   // Picks size classes so name/time always fit the block's pixel height.
+  // Width grows a bit slower than the time axis so 300% doesn't push every
+  // lane off-screen; text grows within a readable range.
+  function ganttWidthScale(){ return Math.max(0.75, Math.min(2.2, 0.4 + 0.6*ganttZoom)); }
+  function ganttFontScale(){ return Math.max(0.85, Math.min(1.8, 0.35 + 0.65*ganttZoom)); }
+  function applyZoomVars(wrap, opts){
+    if(!opts || !opts.useZoom) return 1;
+    wrap.classList.add("zoomable");
+    wrap.style.setProperty("--gzw", ganttWidthScale().toFixed(3));
+    wrap.style.setProperty("--gzf", ganttFontScale().toFixed(3));
+    return ganttFontScale();
+  }
   function applyBlockFit(block, heightPx){
     if(heightPx < 56) block.classList.add("blk-sm");
     if(heightPx < 30) block.classList.add("blk-xs");
@@ -3483,6 +3508,7 @@
     const trackH = totalMin*pxPerMin;
     const wrap = document.createElement("div");
     wrap.className = "gantt-v";
+    const fitScale = applyZoomVars(wrap, opts);
 
     const axisCol = document.createElement("div");
     axisCol.className = "axis-col";
@@ -3525,7 +3551,7 @@
         block.style.top = ((s-startMin)*pxPerMin)+"px";
         const staffH = Math.max((e-s)*pxPerMin-3,18);
         block.style.height = staffH+"px";
-        applyBlockFit(block, staffH);
+        applyBlockFit(block, staffH / fitScale);
         block.style.background = t.color || "#e0e0e0";
         block.innerHTML = `<b>${escapeHtml(t.label)}</b><span class="t">${t.start}–${t.end}</span>`;
         block.title = t.label+" "+t.start+"〜"+t.end+(t.memo?(" / "+t.memo):"")+(opts.interactive!==false ? "\n（ドラッグで移動／担当変更、上下端をドラッグで長さを変更できます。Alt/Optionキーを押しながらドラッグすると複製されます）" : "");
@@ -3756,6 +3782,7 @@
 
     const wrap = document.createElement("div");
     wrap.className = "gantt-v";
+    const fitScale = applyZoomVars(wrap, opts);
 
     const axisCol = document.createElement("div");
     axisCol.className = "axis-col";
@@ -3805,7 +3832,7 @@
           block.style.top = ((s-startMin)*pxPerMin)+"px";
           const blkH = Math.max((e-s)*pxPerMin-3,18);
           block.style.height = blkH+"px";
-          applyBlockFit(block, blkH);
+          applyBlockFit(block, blkH / fitScale);
           block.style.background = a.color;
           block.innerHTML = `<b>${escapeHtml(a.name)}</b><span class="t">${a[startKey]}–${a[endKey]}</span>`;
           block.title = a.name+" "+a[startKey]+"〜"+a[endKey]+(a.memo?(" / "+a.memo):"")+(opts.interactive!==false ? "\n（ドラッグで移動／"+(kind==="live"?"ステージ":"特典会場")+"変更、上下端をドラッグで尺を変更できます。Alt/Optionキーを押しながらドラッグすると複製されます）" : "");
@@ -3865,7 +3892,7 @@
             co.style.top = ((e-startMin)*pxPerMin)+"px";
             const coH = Math.max(changeover*pxPerMin-3,14);
             co.style.height = coH+"px";
-            if(coH < 30) co.classList.add("blk-xs");
+            if(coH / fitScale < 30) co.classList.add("blk-xs");
             co.innerHTML = `<span class="t">転換 ${changeover}分</span>`;
             co.title = "機材転換/バッファ "+changeover+"分";
             track.appendChild(co);

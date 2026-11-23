@@ -293,6 +293,21 @@
   .gantt-v.zoomable .block.blk-xs .t{ font-size:calc(9px * var(--gzf,1)); }
   .gantt-v.zoomable .block.blk-lg b{ font-size:calc(14px * var(--gzf,1)); }
   .gantt-v.zoomable .block.blk-lg .t{ font-size:calc(12px * var(--gzf,1)); }
+  /* ---- 対バンモード ---- */
+  .tb-settings{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px 14px; }
+  .tb-settings label{ font-size:12px; color:var(--muted); display:block; margin-bottom:3px; }
+  .tb-row{ display:grid; grid-template-columns:34px 64px minmax(140px,1fr) 92px 110px 70px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); }
+  .tb-row.tb-head{ font-size:12px; color:var(--muted); font-weight:bold; }
+  .tb-row .tb-no{ font-weight:bold; text-align:center; }
+  .tb-row .tb-moves{ display:flex; gap:4px; }
+  .tb-row .tb-moves button{ width:28px; height:30px; padding:0; border:1px solid var(--border); background:var(--panel2); border-radius:6px; cursor:pointer; color:var(--text); }
+  .tb-row .tb-moves button:disabled{ opacity:.35; cursor:default; }
+  .tb-row input{ width:100%; box-sizing:border-box; }
+  .tb-result{ width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+  .tb-result th, .tb-result td{ border-bottom:1px solid var(--border); padding:7px 8px; text-align:left; vertical-align:top; }
+  .tb-result th{ font-size:12px; color:var(--muted); }
+  .tb-result tr.tb-break td{ color:var(--muted); font-size:12px; background:var(--panel2); }
+  @media (max-width:700px){ .tb-row{ grid-template-columns:30px 60px 1fr 70px; } .tb-row .tb-merch, .tb-row .tb-del{ grid-column:span 2; } }
   .gantt-zoom-bar{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0 8px; font-size:12px; color:var(--muted); }
   .gantt-zoom-bar button{ border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:6px; min-width:30px; height:28px; cursor:pointer; font-size:14px; padding:0 8px; }
   .gantt-zoom-bar input[type=range]{ width:140px; }
@@ -600,6 +615,7 @@
     <button data-tab="artists">③ アーティスト管理</button>
     <button data-tab="live">④ ライブTT</button>
     <button data-tab="tokuten">⑤ 特典会TT</button>
+    <button data-tab="taiban">対バンモード</button>
   </div>
   <div class="tab-row">
     <span class="tab-group-label">出力・記録</span>
@@ -900,6 +916,11 @@
   </div>
 
   <!-- ============ TAB: OUTPUT ============ -->
+  <!-- ============ TAB: 対バンモード ============ -->
+  <div class="tabcontent" id="tab-taiban">
+    <div id="taibanWrap"></div>
+  </div>
+
   <div class="tabcontent" id="tab-output">
     <div class="card admin-field" id="sponsorAdminCard">
       <h2>スポンサー管理（管理者専用）</h2>
@@ -3675,6 +3696,276 @@
     });
   }
 
+  // ---------- 対バンモード（1ステージ・出演順から自動計算） ----------
+  // A day switched into 対バン mode keeps its artists in a fixed running
+  // order (a.taibanOrder) and derives every time from a few rules: start
+  // time, each act's set length, optional breaks, concurrent merch lanes,
+  // post-show merch and green-room use. Results are written into the normal
+  // liveStart/tokutenStart/... fields so ④⑤⑥⑨ and 当日 all keep working.
+  const TB_DEFAULTS = { enabled:false, stageId:"", doors:"", start:"18:00", breakEvery:0, breakMin:10, lanes:2,
+    merchMode:"auto", merchOffset:5, merchDur:60, postTarget:0, postOffset:10, roomBefore:60, roomAfter:10, defaultDur:25 };
+  let taibanDayId = null;
+  function tbSettings(day){
+    day.taiban = Object.assign({}, TB_DEFAULTS, day.taiban||{});
+    return day.taiban;
+  }
+  function tbOrdered(dayId){
+    const list = state.artists.filter(a=>a.dayId===dayId);
+    return list.map((a,i)=>({a,i})).sort((x,y)=>{
+      const ox = x.a.taibanOrder, oy = y.a.taibanOrder;
+      if(ox!=null && oy!=null) return ox-oy;
+      if(ox!=null) return -1; if(oy!=null) return 1;
+      const lx = timeToMin(x.a.liveStart), ly = timeToMin(y.a.liveStart);
+      if(lx!=null && ly!=null && lx!==ly) return lx-ly;
+      return x.i-y.i;
+    }).map(x=>x.a);
+  }
+  function tbRenumber(dayId){ tbOrdered(dayId).forEach((a,i)=>{ a.taibanOrder=i; }); }
+  function tbLaneIds(s){
+    const names = ["物販A","物販B","物販C","物販D"];
+    const n = Math.max(1, Math.min(4, parseInt(s.lanes,10)||1));
+    while(state.tokutenSpots.length < n) findOrCreateTokuten(names[state.tokutenSpots.length] || ("物販"+(state.tokutenSpots.length+1)));
+    return state.tokutenSpots.slice(0,n).map(x=>x.id);
+  }
+  function recomputeTaiban(dayId){
+    const day = byId(state.days, dayId); if(!day) return;
+    const s = tbSettings(day); if(!s.enabled) return;
+    if(!state.stages.length) findOrCreateStage("メインステージ");
+    if(!s.stageId || !byId(state.stages, s.stageId)) s.stageId = state.stages[0].id;
+    const acts = tbOrdered(dayId);
+    tbRenumber(dayId);
+    let t = timeToMin(s.start); if(t==null) t = 18*60;
+    const breakEvery = parseInt(s.breakEvery,10)||0, breakMin = parseInt(s.breakMin,10)||0;
+    acts.forEach((a,i)=>{
+      const dur = parseInt(a.durationMin,10) || parseInt(s.defaultDur,10) || 25;
+      a.durationMin = String(dur);
+      a.stageId = s.stageId;
+      a.liveStart = minToTime(t); a.liveEnd = minToTime(t+dur);
+      t += dur;
+      const isLast = i===acts.length-1;
+      if(breakEvery>0 && breakMin>0 && !isLast && (i+1)%breakEvery===0){ a.changeoverMin = String(breakMin); t += breakMin; }
+      else a.changeoverMin = "";
+    });
+    // merch lanes
+    const laneIds = tbLaneIds(s);
+    const laneFree = laneIds.map(()=> -Infinity);
+    const mDur = parseInt(s.merchDur,10)||60;
+    const place = (a, desired)=>{
+      let li = laneFree.findIndex(f=> f<=desired);
+      let start = desired;
+      if(li<0){ li = laneFree.indexOf(Math.min(...laneFree)); start = laneFree[li]; }
+      a.tokutenSpotId = laneIds[li]; a.tokutenStart = minToTime(start); a.tokutenEnd = minToTime(start+mDur);
+      a.tokutenDurationMin = String(mDur);
+      laneFree[li] = start + mDur + 5;
+    };
+    const pt = parseInt(s.postTarget,10)||0;
+    const postSet = new Set(pt===-1 ? acts.map(a=>a.id) : pt>0 ? acts.slice(-pt).map(a=>a.id) : []);
+    const finalEnd = acts.length ? timeToMin(acts[acts.length-1].liveEnd) : null;
+    acts.filter(a=>!postSet.has(a.id)).forEach(a=>{
+      const end = timeToMin(a.liveEnd);
+      const manual = s.merchMode==="manual" ? timeToMin(a.taibanMerchStart) : null;
+      place(a, manual!=null ? manual : end + (s.merchMode==="manual" ? 5 : (parseInt(s.merchOffset,10)||0)));
+    });
+    acts.filter(a=>postSet.has(a.id)).forEach(a=> place(a, finalEnd + (parseInt(s.postOffset,10)||0)));
+    // green room
+    const rb = parseInt(s.roomBefore,10)||0, ra = parseInt(s.roomAfter,10)||0;
+    acts.forEach(a=>{
+      const rs = timeToMin(a.liveStart) - rb;
+      const lastEnd = Math.max(timeToMin(a.liveEnd), timeToMin(a.tokutenEnd)||0);
+      a.roomStart = minToTime(Math.max(0, rs)); a.roomEnd = minToTime(lastEnd + ra);
+      a.callTime = a.roomStart;
+    });
+  }
+  function tbNormTime(raw){
+    const v = normalizeTypedTime(raw); if(v) return v;
+    const m = String(raw||"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[：]/g,":").trim().match(/^(\d{1,2}):?(\d{2})$/);
+    if(m && +m[1]<=29 && +m[2]<=59) return m[1].padStart(2,"0")+":"+m[2];
+    return null;
+  }
+  function tbChanged(dayId){ recomputeTaiban(dayId); saveState(); renderAll(); }
+  function taibanText(day){
+    const s = tbSettings(day);
+    const acts = tbOrdered(day.id);
+    const head = [`【${state.event.name||"イベント名未設定"}】`, [day.label, day.date, dayVenue(day)].filter(Boolean).join(" "),
+      (s.doors?`開場 ${s.doors} ／ `:"")+`開演 ${s.start}`, ""];
+    const lines = acts.map((a,i)=>`${i+1}. ${a.liveStart}〜${a.liveEnd}　${a.name}`+
+      (a.tokutenStart?`\n　物販 ${tokutenName(a.tokutenSpotId)} ${a.tokutenStart}〜${a.tokutenEnd}`:"")+
+      (a.roomStart?`\n　楽屋 ${a.roomStart}〜${a.roomEnd}`:"")+
+      (a.changeoverMin?`\n　（調整 ${a.changeoverMin}分）`:""));
+    return head.concat(lines).join("\n");
+  }
+  async function taibanPopImage(day){
+    const s = tbSettings(day);
+    const acts = tbOrdered(day.id);
+    try{ await loadHtml2CanvasScript(); }catch(e){ alert("画像化の部品を読み込めませんでした（インターネット接続を確認してください）。"); return; }
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;left:-10000px;top:0;width:900px;padding:48px 52px;box-sizing:border-box;background:#141414;color:#fff;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;";
+    const rows = acts.map((a,i)=>`<div style="display:flex;align-items:center;gap:18px;padding:12px 0;border-bottom:1px solid #333">
+        <div style="width:44px;height:44px;border-radius:22px;background:#EC3013;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px">${i+1}</div>
+        <div style="width:170px;font-size:24px;font-weight:700;letter-spacing:.02em">${escapeHtml(a.liveStart)}〜${escapeHtml(a.liveEnd)}</div>
+        <div style="flex:1;font-size:28px;font-weight:900">${escapeHtml(a.name)}</div>
+        <div style="font-size:16px;color:#cfcfcf;text-align:right">${a.tokutenStart?("物販 "+escapeHtml(tokutenName(a.tokutenSpotId))+"<br>"+escapeHtml(a.tokutenStart)+"〜"+escapeHtml(a.tokutenEnd)):""}</div>
+      </div>`).join("");
+    box.innerHTML = `<div style="font-size:16px;color:#EC3013;font-weight:700;letter-spacing:.2em">TIMETABLE</div>
+      <div style="font-size:40px;font-weight:900;margin:6px 0 4px">${escapeHtml(state.event.name||"")}</div>
+      <div style="font-size:18px;color:#cfcfcf;margin-bottom:18px">${escapeHtml([day.date, dayVenue(day)].filter(Boolean).join("　"))}　${s.doors?("OPEN "+escapeHtml(s.doors)+" / "):""}START ${escapeHtml(s.start)}</div>
+      ${rows}
+      ${(typeof shouldShowWatermark==="function" && shouldShowWatermark()) ? '<div style="margin-top:18px;font-size:12px;color:#888;text-align:right">CueFesで作成</div>' : ''}`;
+    document.body.appendChild(box);
+    try{
+      const canvas = await window.html2canvas(box, { backgroundColor:"#141414", scale:2 });
+      const blob = await new Promise(res=>canvas.toBlob(res,"image/png"));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download=`${state.event.name||"timetable"}_${day.label}_POP.png`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+    } finally { box.remove(); }
+  }
+  function tbSelect(name, val, opts){
+    return `<select data-tbset="${name}">`+opts.map(([v,l])=>`<option value="${escapeAttr(v)}" ${String(v)===String(val)?"selected":""}>${escapeHtml(l)}</option>`).join("")+`</select>`;
+  }
+  function renderTaibanTab(){
+    const wrap = document.getElementById("taibanWrap");
+    if(!wrap) return;
+    if(!taibanDayId || !byId(state.days, taibanDayId)) taibanDayId = state.days[0].id;
+    const day = byId(state.days, taibanDayId);
+    const s = tbSettings(day);
+    const acts = tbOrdered(day.id);
+    const range = (a,b,st,fmt)=>{ const r=[]; for(let v=a; v<=b; v+=st) r.push([v, fmt(v)]); return r; };
+    let html = `<div class="card">
+      <h2>対バンモード（1ステージ・出演順から自動計算）</h2>
+      <p class="helptext">出演順と持ち時間を並べるだけで、出演時間・物販・終演後物販・楽屋の時間が自動で決まります。できあがった時間は④ライブTT・⑤特典会TT・PDF出力・出演者連絡シート・当日モードにそのまま反映されます。</p>
+      <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap">
+        <label style="width:auto;margin:0">DAY <select id="tbDay">${state.days.map(d=>`<option value="${d.id}" ${d.id===day.id?"selected":""}>${escapeHtml(d.label)}${d.date?"（"+escapeHtml(d.date)+"）":""}</option>`).join("")}</select></label>
+        <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:bold;color:var(--text)"><input type="checkbox" id="tbEnabled" ${s.enabled?"checked":""} style="width:auto">このDAYを対バンモードにする</label>
+      </div>
+      ${s.enabled ? "" : '<p class="helptext" style="margin-top:10px">チェックを入れると、このDAYの出演者の時間が下の設定から自動計算されます（④⑤でドラッグした時間は、設定を変えたときに計算し直されます）。</p>'}
+    </div>`;
+    if(s.enabled){
+      html += `<div class="card"><h2>進行のルール</h2><div class="tb-settings">
+        <div><label>ステージ</label>${tbSelect("stageId", s.stageId, state.stages.map(x=>[x.id,x.name]))}</div>
+        <div><label>開場時刻（任意）</label><input type="text" inputmode="numeric" placeholder="17:30" data-tbtime="doors" value="${escapeAttr(s.doors)}"></div>
+        <div><label>開演時刻</label><input type="text" inputmode="numeric" placeholder="18:00" data-tbtime="start" value="${escapeAttr(s.start)}"></div>
+        <div><label>新しい出演者の持ち時間</label>${tbSelect("defaultDur", s.defaultDur, range(10,60,5,v=>v+"分"))}</div>
+        <div><label>調整（休憩）の入れ方</label>${tbSelect("breakEvery", s.breakEvery, [[0,"入れない"]].concat(range(1,5,1,v=>v+"組ごと")))}</div>
+        <div><label>調整時間</label>${tbSelect("breakMin", s.breakMin, range(5,30,5,v=>v+"分"))}</div>
+        <div><label>物販レーン数</label>${tbSelect("lanes", s.lanes, [[1,"1レーン"],[2,"2レーン（A/B）"],[3,"3レーン（A/B/C）"],[4,"4レーン（A〜D）"]])}</div>
+        <div><label>物販の開始</label>${tbSelect("merchMode", s.merchMode, [["auto","出演後に自動"],["manual","出演者ごとに手入力"]])}</div>
+        <div><label>出演後 何分で物販開始</label>${tbSelect("merchOffset", s.merchOffset, range(0,30,5,v=>v+"分後"))}</div>
+        <div><label>物販時間</label>${tbSelect("merchDur", s.merchDur, range(30,120,10,v=>v+"分"))}</div>
+        <div><label>終演後物販の対象</label>${tbSelect("postTarget", s.postTarget, [[0,"なし"]].concat(range(2,5,1,v=>"最後の"+v+"組")).concat([[-1,"全組"]]))}</div>
+        <div><label>終演後 何分で物販開始</label>${tbSelect("postOffset", s.postOffset, range(5,20,5,v=>v+"分後"))}</div>
+        <div><label>楽屋に入る（出演の何分前）</label>${tbSelect("roomBefore", s.roomBefore, range(30,120,10,v=>v+"分前"))}</div>
+        <div><label>楽屋を出る（物販終了の何分後）</label>${tbSelect("roomAfter", s.roomAfter, range(0,30,5,v=>v+"分後"))}</div>
+      </div>
+      <p class="helptext">同じ物販レーンは前の物販から5分以上空けます。希望の時間にレーンが空いていないときは、先に空くレーンに回します。深夜は「25:00」のように入力できます。入り時間は「楽屋に入る時刻」と同じに設定されます。</p></div>`;
+
+      html += `<div class="card"><h2>出演順（${acts.length}組）</h2>
+        <div class="tb-row tb-head"><span>順</span><span>並べ替え</span><span>出演者</span><span>持ち時間</span><span class="tb-merch">${s.merchMode==="manual"?"物販開始（手入力）":"物販"}</span><span class="tb-del"></span></div>
+        ${acts.map((a,i)=>`<div class="tb-row" data-tbid="${a.id}">
+          <span class="tb-no">${i+1}</span>
+          <span class="tb-moves"><button type="button" data-tbmove="-1" aria-label="ひとつ前へ" ${i===0?"disabled":""}>↑</button><button type="button" data-tbmove="1" aria-label="ひとつ後ろへ" ${i===acts.length-1?"disabled":""}>↓</button></span>
+          <input type="text" data-tbf="name" value="${escapeAttr(a.name)}" aria-label="出演者名">
+          <span class="durfield"><input type="number" min="5" step="5" data-tbf="durationMin" value="${escapeAttr(a.durationMin||s.defaultDur)}" aria-label="持ち時間"><span>分</span></span>
+          <span class="tb-merch">${s.merchMode==="manual" ? `<input type="text" inputmode="numeric" placeholder="空欄＝出演5分後" data-tbf="taibanMerchStart" value="${escapeAttr(a.taibanMerchStart||"")}">` : `<span style="font-size:12px;color:var(--muted)">${a.tokutenStart?escapeHtml(tokutenName(a.tokutenSpotId)+" "+a.tokutenStart):""}</span>`}</span>
+          <span class="tb-del"><button type="button" class="btn ghost" data-tbdel="1" style="padding:4px 8px;font-size:12px">削除</button></span>
+        </div>`).join("")}
+        <div class="row" style="margin-top:10px"><button class="btn" type="button" id="tbAdd">＋ 出演者を追加</button></div>
+        <h3 style="font-size:14px;margin:16px 0 6px">まとめて追加（1行に1組、出演順に貼り付け）</h3>
+        <textarea id="tbBulk" rows="4" style="width:100%;box-sizing:border-box" placeholder="ルミナス☆ポップ&#10;あおぞらパレット&#10;Neo Ribbon"></textarea>
+        <div class="row" style="margin-top:6px"><button class="btn secondary" type="button" id="tbBulkApply">出演者欄に反映</button><span class="helptext" style="margin:0">今いる出演者の後ろに、持ち時間${escapeHtml(s.defaultDur)}分で追加します。</span></div>
+      </div>`;
+
+      const rows = [];
+      acts.forEach((a,i)=>{
+        rows.push(`<tr><td>${i+1}</td><td>${escapeHtml(a.liveStart)}〜${escapeHtml(a.liveEnd)}</td><td><b>${escapeHtml(a.name)}</b></td>
+          <td>${a.tokutenStart?escapeHtml(tokutenName(a.tokutenSpotId)+" "+a.tokutenStart+"〜"+a.tokutenEnd):""}</td>
+          <td>${a.roomStart?escapeHtml(a.roomStart+"〜"+a.roomEnd):""}</td></tr>`);
+        if(a.changeoverMin) rows.push(`<tr class="tb-break"><td></td><td colspan="4">調整 ${escapeHtml(a.changeoverMin)}分</td></tr>`);
+      });
+      html += `<div class="card"><h2>できあがった進行表</h2>
+        <p class="helptext" style="margin-top:0">${escapeHtml([day.label, day.date, dayVenue(day)].filter(Boolean).join(" ・ "))}　${s.doors?"開場 "+escapeHtml(s.doors)+" ／ ":""}開演 ${escapeHtml(s.start)}</p>
+        <table class="tb-result"><thead><tr><th>順</th><th>出演時間</th><th>出演者</th><th>物販</th><th>楽屋・使用時間</th></tr></thead><tbody>${rows.join("")}</tbody></table>
+        <div class="row" style="margin-top:12px;flex-wrap:wrap">
+          <button class="btn secondary" type="button" id="tbCopy">テキストをコピー</button>
+          <button class="btn secondary" type="button" id="tbPop">POP版の画像を保存</button>
+          <button class="btn ghost" type="button" id="tbGoOutput">PDF・Excel出力へ</button>
+          <span id="tbStatus" class="helptext" style="margin:0"></span>
+        </div></div>`;
+    }
+    wrap.innerHTML = html;
+  }
+  (function wireTaiban(){
+    const wrap = document.getElementById("taibanWrap");
+    if(!wrap) return;
+    const curDay = ()=> byId(state.days, taibanDayId);
+    wrap.addEventListener("change", e=>{
+      const el = e.target, day = curDay(); if(!day) return;
+      const s = tbSettings(day);
+      if(el.id==="tbDay"){ taibanDayId = el.value; renderTaibanTab(); return; }
+      if(el.id==="tbEnabled"){
+        s.enabled = el.checked;
+        if(s.enabled){ tbRenumber(day.id); recomputeTaiban(day.id); }
+        saveState(); renderAll(); return;
+      }
+      if(el.dataset.tbset){ const k=el.dataset.tbset; s[k] = (k==="stageId"||k==="merchMode") ? el.value : parseInt(el.value,10); return tbChanged(day.id); }
+      if(el.dataset.tbtime){ const v = tbNormTime(el.value); if(v==null && el.value.trim()){ el.value = s[el.dataset.tbtime]||""; return; } s[el.dataset.tbtime] = v||""; return tbChanged(day.id); }
+      const row = el.closest("[data-tbid]");
+      if(row && el.dataset.tbf){
+        const a = byId(state.artists, row.dataset.tbid); if(!a) return;
+        const f = el.dataset.tbf;
+        if(f==="name") a.name = el.value.trim() || a.name;
+        else if(f==="durationMin") a.durationMin = String(Math.max(5, parseInt(el.value,10)||s.defaultDur));
+        else if(f==="taibanMerchStart") a.taibanMerchStart = el.value.trim() ? (tbNormTime(el.value)||"") : "";
+        tbChanged(day.id);
+      }
+    });
+    wrap.addEventListener("click", e=>{
+      const day = curDay(); if(!day) return;
+      const s = tbSettings(day);
+      const mv = e.target.closest("[data-tbmove]");
+      if(mv){
+        const id = mv.closest("[data-tbid]").dataset.tbid;
+        const acts = tbOrdered(day.id); const i = acts.findIndex(a=>a.id===id); const j = i + parseInt(mv.dataset.tbmove,10);
+        if(i<0||j<0||j>=acts.length) return;
+        [acts[i], acts[j]] = [acts[j], acts[i]];
+        acts.forEach((a,k)=>a.taibanOrder=k);
+        return tbChanged(day.id);
+      }
+      const del = e.target.closest("[data-tbdel]");
+      if(del){
+        const a = byId(state.artists, del.closest("[data-tbid]").dataset.tbid); if(!a) return;
+        if(!confirm(a.name+" を削除しますか？")) return;
+        lastDeletedSnapshot = { kind:"artist", data:Object.assign({}, a) };
+        state.artists = state.artists.filter(x=>x.id!==a.id);
+        return tbChanged(day.id);
+      }
+      const addOne = name=>{
+        const n = tbOrdered(day.id).length;
+        state.artists.push({ id:uid(), name, color:colorForIndex(state.artists.length), dayId:day.id,
+          stageId:"", liveStart:"", liveEnd:"", durationMin:String(s.defaultDur), changeoverMin:"",
+          tokutenSpotId:"", tokutenStart:"", tokutenEnd:"", tokutenDurationMin:"", greenRoomId:"", callTime:"", moveBufferMin:"", memo:"",
+          audience:"", ticketSales:"", favorability:"", taibanOrder:n });
+      };
+      if(e.target.id==="tbAdd"){ addOne("新しい出演者"); return tbChanged(day.id); }
+      if(e.target.id==="tbBulkApply"){
+        const names = document.getElementById("tbBulk").value.split(/\r?\n/).map(x=>x.replace(/^\s*(\d+[\.\)．、]|[・\-#①-⑳])\s*/,"").trim()).filter(Boolean);
+        if(!names.length) return;
+        names.forEach(addOne);
+        return tbChanged(day.id);
+      }
+      if(e.target.id==="tbCopy"){
+        const txt = taibanText(day);
+        const st = document.getElementById("tbStatus");
+        (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(
+          ()=>{ if(st) st.textContent="コピーしました。"; },
+          ()=>{ window.prompt("コピーしてお使いください", txt); });
+        return;
+      }
+      if(e.target.id==="tbPop"){ taibanPopImage(day); return; }
+      if(e.target.id==="tbGoOutput"){ const b=document.querySelector('nav.tabs button[data-tab="output"]'); if(b) b.click(); }
+    });
+  })();
+
   function renderStaffTab(){
     renderStaffLaneNameInputs();
     fillDaySelect(document.getElementById("stDay"), state.days[0].id);
@@ -5198,6 +5489,7 @@
     renderArtistMasterTab();
     renderContactSheetTab();
     renderStaffTab();
+    renderTaibanTab();
     renderOnboardingChecklist();
     updateViewLockButton();
     updateClock();

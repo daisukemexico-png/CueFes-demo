@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CueFes">
+<meta name="theme-color" content="#FFFFFF">
 <title>CueFes（キューフェス）</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABy0lEQVR42u1Xz0rDMBhPMikpYxGc0KrgNgbbxHXgZScfwGfYbUdvexRv8+Ztb+BL7KKoBxUVFRx0WMEObVaGeAqEmKR/NukEP/goaZt8f/PLLzCHEAQZCgIZS+YOrKSZ1HKa3TAM25TSDv8eYzwAAADDMIYXl1cncdaCSXqgUa/1RaM6IYT0ohyJ5UDLaXZ93z8SoxUjlWUGYzy4vrk9TO2AGHWcqGTzHp+eVxM7wC8SFYlKyqXtd50TSJd2ZpwQ0ktjXDTaqNf6P37IIQRlWq2U/Wql7O/uNI5V/4j6uZFf55+8qtaRloBvOlXtAADgY2+N8uOvUbBVcANvYpnFght4qYGIGSeE9DIFoqhuz5+9YX48sczi3FDccppdHtVEYUbSGIuVgTAM27oJrLYFN/BkPbCww8gwjOFSHkaswyeWWVRFHHcHaDOgKgVfArRpvvCaphlRVqnXIiFDwaRop/umUhR1DOtK8GuUjCGgyAFkUMzrwhzgEVB6gnFIyGsUP0i0C1gWKKUdWSmidojICSilHZkTOQShlJC44/G5bVul2WzmTKfTA9u2Sq+edzoPIbm7f9j/W5RsKUjpUtDypBeTJPwR/l9Os3bgGyrmIUyYDD50AAAAAElFTkSuQmCC">
 <style>
@@ -486,6 +490,217 @@
     border-radius:6px; padding:2px 10px; cursor:pointer; font-size:12px; flex:0 0 auto;
   }
   @media print{ #demoBanner{ display:none !important; } }
+
+  /* ==========================================================
+     案1 ステップガイド型 UI（2026-11 リニューアル）
+     ========================================================== */
+  :root{
+    --bg:#F6F5F2; --panel:#FFFFFF; --panel2:#F2F0EC; --border:#E3E1DC;
+    --text:#1F1F1F; --muted:#5E5C57;
+    --accent:#C4250C; --accent-ink:#9E1D08; --accent-soft:#FDECE8;
+    --accent2:#0E6D8C; --accent2-soft:#E6F2F6;
+    --cf-header-h:64px; --cf-side-w:256px;
+  }
+  #demoBanner{ background:var(--accent); }
+  .storage-note{ display:none; }
+
+  /* ---- header ---- */
+  header.appbar.cf-appbar{
+    position:sticky; top:0; z-index:40; flex-wrap:nowrap;
+    height:var(--cf-header-h); padding:0 20px; gap:12px;
+    padding-left:max(20px, env(safe-area-inset-left)); padding-right:max(20px, env(safe-area-inset-right));
+  }
+  .cf-appbar .brand{ flex:0 0 auto; }
+  .cf-evinfo{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .cf-evname{ font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:36vw; }
+  .cf-savestatus{ font-size:12px; color:var(--muted); white-space:nowrap; }
+  .cf-grow{ flex:1; }
+  .cf-appbar .btn{ height:40px; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .cf-icon-btn{ width:44px; height:44px; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--text); display:none; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; }
+  .cf-sync-pill{ height:36px; border-radius:18px; border:1px solid var(--accent2); background:var(--accent2-soft); color:var(--accent2); font:700 12.5px/1 inherit; padding:0 14px; cursor:pointer; white-space:nowrap; }
+  .cf-sync-pill.is-new{ background:var(--accent2); color:#fff; }
+  .cf-sync-pill.is-error{ border-color:var(--danger); background:#c81e3912; color:var(--danger); }
+  .cf-menu-wrap{ position:relative; flex:0 0 auto; }
+  .cf-menu{
+    position:absolute; right:0; top:calc(100% + 8px); z-index:45; min-width:280px;
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; box-shadow:0 10px 30px rgba(20,20,30,.16);
+    padding:8px; display:flex; flex-direction:column; gap:2px;
+  }
+  .cf-menu[hidden]{ display:none; }
+  .cf-menu .btn{ height:auto; min-height:44px; width:100%; justify-content:flex-start; border:0; background:transparent; color:var(--text); font-weight:600; border-radius:8px; padding:10px 12px; text-align:left; }
+  .cf-menu .btn:hover{ background:var(--panel2); }
+  .cf-menu .btn.danger{ color:var(--danger); }
+  .cf-menu-sep{ height:1px; background:var(--border); margin:4px 6px; }
+
+  /* ---- shell: sidebar + main ---- */
+  .cf-shell{ display:flex; align-items:flex-start; min-height:calc(100vh - var(--cf-header-h)); }
+  nav.tabs.cf-side{
+    position:sticky; top:var(--cf-header-h); flex:0 0 var(--cf-side-w); width:var(--cf-side-w);
+    height:calc(100vh - var(--cf-header-h)); height:calc(100dvh - var(--cf-header-h));
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
+    display:flex; flex-direction:column; gap:2px; padding:16px 12px 16px;
+    padding-left:max(12px, env(safe-area-inset-left));
+    background:var(--panel); border-right:1px solid var(--border); border-bottom:0;
+  }
+  nav.tabs.cf-side button{
+    display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:8px 10px;
+    border:0; border-radius:10px; background:transparent; color:var(--text); text-align:left;
+    border-bottom:0; font-size:14px; font-weight:400; margin:0;
+  }
+  nav.tabs.cf-side button:hover{ background:var(--panel2); color:var(--text); }
+  nav.tabs.cf-side button.active{ background:var(--accent-soft); color:var(--text); }
+  nav.tabs.cf-side button.clock-tab{ margin-left:0; color:var(--text); }
+  nav.tabs.cf-side button.cf-subitem{ min-height:40px; padding-left:18px; }
+  nav.tabs.cf-side button.cf-subitem .cf-dot{ width:24px; height:24px; flex-basis:24px; font-size:12px; }
+  .cf-lbl{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .cf-lbl b{ font-size:14px; font-weight:700; }
+  .cf-lbl small{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cf-dot{
+    width:30px; height:30px; flex:0 0 30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;
+    background:#F0EEEA; color:var(--muted);
+  }
+  .cf-dot.is-done{ background:var(--accent2-soft); color:var(--accent2); }
+  nav.tabs.cf-side button.active .cf-dot{ background:var(--accent); color:#fff; }
+  .cf-side-group{ font-size:11.5px; font-weight:700; color:var(--muted); letter-spacing:.04em; padding:14px 10px 6px; display:flex; flex-direction:column; gap:2px; }
+  .cf-side-group span{ font-weight:500; letter-spacing:0; }
+  .cf-progress{ margin-top:auto; padding:14px; border-radius:12px; background:var(--bg); display:flex; flex-direction:column; gap:8px; font-size:13px; }
+  .cf-progress-label{ font-size:12px; color:var(--muted); }
+  .cf-progress-bar{ height:8px; border-radius:4px; background:var(--border); overflow:hidden; }
+  .cf-progress-bar div{ height:100%; width:0; background:var(--accent); border-radius:4px; transition:width .3s ease; }
+  .cf-side-backdrop{ display:none; }
+
+  .cf-shell > main{ flex:1; min-width:0; max-width:none; margin:0; padding:20px 24px 96px; padding-right:max(24px, env(safe-area-inset-right)); }
+  .cf-shell > main > .tabcontent{ max-width:1400px; }
+
+  /* ---- step bar ---- */
+  .cf-stepbar{
+    display:flex; align-items:center; gap:16px; padding:14px 18px; margin-bottom:16px;
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-sm);
+    max-width:1400px;
+  }
+  .cf-stepbar[hidden]{ display:none; }
+  .cf-stepnum{ width:40px; height:40px; flex:0 0 40px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; }
+  .cf-steptext{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .cf-steptext b{ font-size:16px; }
+  .cf-steptext span{ font-size:13px; color:var(--muted); line-height:1.5; }
+  .cf-stepwarn{ font:600 13px/1.2 inherit; color:#8A3A00; background:#FFF1DE; padding:8px 12px; border-radius:8px; border:0; cursor:pointer; white-space:nowrap; min-height:36px; }
+  .cf-stepwarn[hidden]{ display:none; }
+  .cf-stepnav{ display:flex; gap:8px; flex:0 0 auto; }
+  .cf-stepnav .btn{ min-height:44px; padding:0 18px; }
+  .cf-stepnav .cf-next{ background:var(--text); border-color:var(--text); }
+  .cf-stepnav .cf-next:hover{ background:#000; border-color:#000; }
+
+  /* ---- selection action bar / toast ---- */
+  .cf-selbar{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:max(20px, env(safe-area-inset-bottom)); z-index:48;
+    display:flex; align-items:center; gap:8px; padding:8px 8px 8px 16px;
+    background:#1F1F1F; color:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.25);
+    max-width:calc(100vw - 32px);
+  }
+  .cf-selbar[hidden]{ display:none; }
+  .cf-selbar-name{ font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; margin-right:6px; }
+  .cf-selbar button.btn, .cf-selbar button.btn.secondary{ min-height:44px; padding:0 16px; background:#3A3935; border-color:#3A3935; color:#fff; }
+  .cf-selbar button.btn:hover{ background:#4A4945; }
+  .cf-selbar button.btn.danger{ background:transparent; border-color:#FF8A80; color:#FFB4AB; }
+  .cf-selbar-close{ width:44px; padding:0 !important; justify-content:center; }
+  .cf-toast{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:max(88px, calc(env(safe-area-inset-bottom) + 76px)); z-index:49;
+    display:flex; align-items:center; gap:14px; padding:12px 14px 12px 18px; border-radius:12px;
+    background:#1F1F1F; color:#fff; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); max-width:calc(100vw - 32px);
+  }
+  .cf-toast[hidden]{ display:none; }
+  .cf-toast button{ background:transparent; border:1px solid #fff6; color:#fff; border-radius:8px; min-height:36px; padding:0 12px; font:700 13px inherit; cursor:pointer; }
+  .cf-conflict-actions{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  .cf-conflict-actions .btn{ min-height:44px; }
+
+  /* ---- sheets tab ---- */
+  .cf-sheets-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .cf-sheets-grid .card{ margin-bottom:0; }
+  .cf-sheets-hero p{ font-size:13.5px; line-height:1.8; margin:0; }
+  #tab-sheets > .card:last-child{ margin-top:16px; }
+  .cf-sync-status{ font-size:13.5px; padding:12px 14px; border-radius:10px; background:var(--bg); margin-bottom:12px; line-height:1.6; }
+  .cf-sync-status.ok{ background:var(--accent2-soft); color:#0A4F66; }
+  .cf-sync-status.err{ background:#c81e3912; color:var(--danger); }
+  .cf-sync-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .cf-big-btn{ min-height:64px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; text-align:left; }
+  .cf-big-btn span{ font-size:15px; }
+  .cf-big-btn small{ font-size:12px; font-weight:500; opacity:.85; }
+  .cf-check{ display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--text); font-weight:500; min-height:40px; margin:0; cursor:pointer; }
+  .cf-check input{ width:20px; height:20px; accent-color:var(--accent); }
+  .cf-setup-steps{ margin:0; padding-left:22px; display:flex; flex-direction:column; gap:14px; }
+  .cf-setup-steps li{ font-size:13.5px; padding-left:4px; }
+  .cf-setup-steps li::marker{ font-weight:700; color:var(--accent); }
+  .cf-setup-steps li span{ display:block; margin-top:4px; color:var(--muted); line-height:1.7; }
+  a#cfSheetsOpen{ display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:8px; border:1px solid var(--accent2); color:var(--accent2); font-weight:700; font-size:13px; text-decoration:none; }
+  a#cfSheetsOpen[hidden]{ display:none; }
+  .cf-setup-steps code{ background:var(--panel2); padding:1px 6px; border-radius:4px; }
+
+  /* ---- 1180px以下（iPad横〜）：サイドを細く ---- */
+  @media (max-width:1180px){
+    :root{ --cf-side-w:224px; }
+    .cf-shell > main{ padding:16px 16px 96px; }
+    .cf-lock-btn{ display:none !important; }
+  }
+  /* ---- 1024px以下（iPad縦・mini）：サイドは引き出しに ---- */
+  @media (max-width:1024px){
+    .cf-icon-btn.cf-side-toggle{ display:inline-flex; }
+    nav.tabs.cf-side{
+      position:fixed; top:0; left:0; bottom:0; z-index:60; height:100%; width:300px; max-width:86vw;
+      transform:translateX(-102%); transition:transform .22s ease; box-shadow:4px 0 24px rgba(0,0,0,.18);
+      padding-top:max(16px, env(safe-area-inset-top));
+    }
+    body.cf-side-open nav.tabs.cf-side{ transform:none; }
+    body.cf-side-open .cf-side-backdrop{ display:block; position:fixed; inset:0; z-index:59; background:rgba(20,20,30,.35); }
+    .cf-menu-label{ display:none; }
+    .cf-evname{ max-width:30vw; }
+    .cf-stepbar{ flex-wrap:wrap; }
+    .cf-stepnav{ margin-left:auto; }
+    .cf-sheets-grid{ grid-template-columns:1fr; }
+  }
+  @media (max-width:640px){
+    header.appbar.cf-appbar{ padding:0 12px; gap:8px; }
+    .cf-appbar .brand .mark{ height:28px; }
+    .cf-savestatus{ display:none; }
+    .cf-pdf-btn{ padding:0 12px; }
+    .cf-sync-actions{ grid-template-columns:1fr; }
+    .cf-stepbar{ padding:12px; gap:10px; }
+    .cf-stepnum{ width:32px; height:32px; flex-basis:32px; font-size:14px; }
+    .cf-steptext b{ font-size:15px; }
+  }
+
+  /* ---- タッチ端末（iPad・スマホ） ---- */
+  @media (pointer:coarse){
+    /* 入力欄は16px以上にしないとiPadのSafariが勝手に拡大する */
+    input[type=text],input[type=time],input[type=date],input[type=email],input[type=password],input[type=number],select,textarea{ font-size:16px; min-height:44px; }
+    button.btn, label.btn{ min-height:44px; }
+    .chip button{ min-width:36px; min-height:36px; }
+    .gantt-v .block{ touch-action:pan-x pan-y; -webkit-touch-callout:none; -webkit-user-select:none; }
+    .gantt-v .block .resize-handle{ height:16px; pointer-events:none; touch-action:none; }
+    .gantt-v .block .resize-handle.top{ top:0; }
+    .gantt-v .block .resize-handle.bottom{ bottom:0; }
+    .gantt-v .block.block-selected .resize-handle{ pointer-events:auto; }
+    .gantt-v .block.block-selected .resize-handle::after{
+      content:""; position:absolute; left:50%; width:34px; height:4px; margin-left:-17px; border-radius:2px; background:rgba(0,0,0,.5);
+    }
+    .gantt-v .block.block-selected .resize-handle.top::after{ top:3px; }
+    .gantt-v .block.block-selected .resize-handle.bottom::after{ bottom:3px; }
+    /* 選択前の枠では、見えないボタンが指に反応しないようにする */
+    .gantt-v .block .block-toolbar button, .gantt-v .block .block-copy-btn{ opacity:0; pointer-events:none; }
+    .gantt-v .block.block-selected .block-toolbar button, .gantt-v .block.block-selected .block-copy-btn{ opacity:1; pointer-events:auto; }
+    /* ボタンが隠れている間は、その分の余白も取らずに名前を全部見せる */
+    .gantt-v .block.has-toolbar:not(.block-selected){ padding-top:4px; }
+    .gantt-v .block.blk-mid.has-toolbar:not(.block-selected) b{ padding-left:0; }
+    .gantt-v .block.blk-mid.has-copy:not(.block-selected) b{ padding-right:0; }
+    .gantt-v .block.blk-sm.has-toolbar:not(.block-selected){ padding-left:6px; }
+    .gantt-v .block.blk-sm.has-copy:not(.block-selected){ padding-right:6px; }
+    .gantt-v .block.touch-armed{ transform:scale(1.04); box-shadow:0 8px 22px rgba(0,0,0,.35); z-index:6; opacity:.95; }
+    .unscheduled-chip{ min-height:40px; display:inline-flex; align-items:center; padding:6px 14px; font-size:13px; }
+    .home-card:hover{ transform:none; }
+  }
+  @media print{
+    header.appbar.cf-appbar, nav.tabs.cf-side, .cf-stepbar, .cf-selbar, .cf-toast{ display:none !important; }
+  }
 </style>
 </head>
 <body>
@@ -494,28 +709,40 @@
   <button type="button" id="btnDemoBannerClose" title="閉じる">✕ 閉じる</button>
 </div>
 
-<header class="appbar">
+<header class="appbar cf-appbar">
+  <button type="button" class="cf-icon-btn cf-side-toggle" id="cfSideToggle" aria-label="手順メニューを開く" aria-controls="cfSide" aria-expanded="false">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
   <div class="brand">
-    <img class="mark" id="hdrTitle" alt="CueFes" height="34" title="① 基本設定に戻る" style="cursor:pointer;" src="data:image/png;base64,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">
-    <div class="wordmark">
-      <div class="tagline">サーキット＆特典会 タイムテーブル管理</div>
-    </div>
+    <img class="mark" id="hdrTitle" alt="CueFes ホームへ" height="34" title="ホームに戻る" style="cursor:pointer;" src="data:image/png;base64,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">
   </div>
-  <div class="row">
-    <button class="btn premium-status-badge" id="btnPremiumStatus" style="display:none;" title="クリックしてログアウトなどの操作ができます"></button>
-    <button class="btn secondary" id="btnAppInfo" title="バージョン情報" style="display:inline-flex;align-items:center;gap:5px;">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      環境設定
+  <div class="cf-evinfo">
+    <span class="cf-evname" id="cfEvName">—</span>
+    <span class="cf-savestatus" id="cfSaveStatus">このブラウザに自動保存</span>
+  </div>
+  <div class="cf-grow"></div>
+  <button type="button" class="cf-sync-pill" id="cfSyncPill" hidden></button>
+  <button class="btn premium-status-badge" id="btnPremiumStatus" style="display:none;" title="クリックしてログアウトなどの操作ができます"></button>
+  <button class="btn secondary cf-lock-btn" id="btnViewLockToggle" title="オンにすると、タイムテーブルをドラッグで動かせなくなります（確認だけしたいときに便利です）">編集ロック：OFF</button>
+  <button class="btn cf-pdf-btn" id="cfBtnPdf" type="button">PDFで配る</button>
+  <div class="cf-menu-wrap">
+    <button type="button" class="btn secondary cf-menu-btn" id="cfMenuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="cfMenu">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      <span class="cf-menu-label">その他</span>
     </button>
-    <button class="btn secondary" id="btnShortcutHelp">？ ショートカット</button>
-    <button class="btn secondary" id="btnViewLockToggle" title="オンにすると、タイムテーブルをドラッグで動かせなくなります（確認だけしたいときに便利です）">編集ロック：OFF</button>
-    <button class="btn secondary" id="btnAdminToggle">管理者ログイン</button>
-    <button class="btn secondary" id="btnBackupExport">バックアップ保存(JSON)</button>
-    <label class="btn secondary" style="cursor:pointer;">
-      バックアップ読込
-      <input type="file" id="fileBackupImport" accept=".json" style="display:none;">
-    </label>
-    <button class="btn danger" id="btnResetAll">全データ削除</button>
+    <div class="cf-menu" id="cfMenu" role="menu" hidden>
+      <button class="btn secondary" id="btnAdminToggle" role="menuitem">管理者ログイン</button>
+      <button class="btn secondary" id="btnAppInfo" role="menuitem" title="バージョン情報">環境設定・バージョン情報</button>
+      <button class="btn secondary" id="btnShortcutHelp" role="menuitem">操作のしかた（ショートカット・iPad）</button>
+      <div class="cf-menu-sep"></div>
+      <button class="btn secondary" id="btnBackupExport" role="menuitem">バックアップ保存（JSON）</button>
+      <label class="btn secondary" role="menuitem">
+        バックアップ読込
+        <input type="file" id="fileBackupImport" accept=".json" style="display:none;">
+      </label>
+      <div class="cf-menu-sep"></div>
+      <button class="btn danger" id="btnResetAll" role="menuitem">全データ削除</button>
+    </div>
   </div>
 </header>
 
@@ -554,8 +781,11 @@
         <tr><td>枠をクリック</td><td>その枠を選択する（もう一度クリックすると選択解除）</td></tr>
         <tr><td>枠の本体をドラッグ</td><td>時間の移動、または隣の列にドロップしてステージ／特典会場／担当を変更する</td></tr>
         <tr><td>枠の上端・下端をドラッグ</td><td>開始または終了だけを変更する（尺が変わります）</td></tr>
-        <tr><td>Alt（Windows）／Option（Mac）＋ドラッグ</td><td>その枠を複製する（元の枠はそのまま残ります）</td></tr>
+        <tr><td>Alt（Windows）／Option（Mac）＋ドラッグ</td><td>その枠を複製する（元の枠はそのまま残ります）。iPadでは枠を選んで下の「複製」</td></tr>
         <tr><td>「未設定」チップをドラッグ</td><td>時間が決まっていない予定・作業を、好きな位置にドラッグして時間を決める</td></tr>
+        <tr><td>【iPad】枠を長押し</td><td>枠が少し浮き上がったら、指を離さずに動かすと移動できます（すぐ動かすと画面のスクロールになります）</td></tr>
+        <tr><td>【iPad】枠をタップ</td><td>選択すると上下につまみが出て、つまみをドラッグで尺を変更。画面下のバーで「複製」「未設定に戻す」「削除」ができます</td></tr>
+        <tr><td>【iPad】削除したあと</td><td>画面下に出る「元に戻す」で、直前に削除した1件を戻せます</td></tr>
         <tr><td>枠にマウスを乗せる</td><td>左上に「✕削除」「✂切り取り」、（ライブのみ）右上に「→特典会」ボタンが表示される</td></tr>
       </tbody>
     </table>
@@ -621,30 +851,44 @@
   </div>
 </div>
 
-<div class="storage-note">複数DAY対応／データはこのブラウザ内に自動保存されます（他の端末とは共有されません）</div>
 
-<nav class="tabs">
-  <div class="tab-row">
-    <span class="tab-group-label">作成</span>
-    <button data-tab="settings">① 基本設定</button>
-    <button data-tab="days">② DAY・時間設定</button>
-    <button data-tab="artists">③ アーティスト管理</button>
-    <button data-tab="live">④ ライブTT</button>
-    <button data-tab="tokuten">⑤ 特典会TT</button>
-    <button data-tab="taiban">対バンモード</button>
-  </div>
-  <div class="tab-row">
-    <span class="tab-group-label">出力・記録</span>
-    <button data-tab="output" class="admin-field">⑥ PDF出力</button>
-    <button data-tab="stats" class="admin-field">⑦ 実績集計</button>
-    <button data-tab="master" class="admin-field">⑧ アーティストマスタ</button>
-    <button data-tab="contactsheet" class="admin-field">⑨ 出演者連絡シート</button>
-    <button data-tab="staffschedule" class="admin-field">⑩ 進行表</button>
-    <button data-tab="clock" class="clock-tab">現在時刻</button>
+<div class="cf-shell">
+<div class="cf-side-backdrop" id="cfSideBackdrop"></div>
+<nav class="tabs cf-side" id="cfSide" aria-label="作業の手順">
+  <button data-tab="home" class="cf-home-item"><span class="cf-dot cf-dot-icon" aria-hidden="true">⌂</span><span class="cf-lbl"><b>ホーム</b><small>できること一覧</small></span></button>
+  <div class="cf-side-group">つくる<span>上から順に進めればOK</span></div>
+  <button data-tab="settings"><span class="cf-dot" data-n="1">1</span><span class="cf-lbl"><b>基本情報</b><small id="cfSub-settings">イベント名・会場</small></span></button>
+  <button data-tab="days"><span class="cf-dot" data-n="2">2</span><span class="cf-lbl"><b>開催日</b><small id="cfSub-days">DAYと時間</small></span></button>
+  <button data-tab="artists"><span class="cf-dot" data-n="3">3</span><span class="cf-lbl"><b>出演者</b><small id="cfSub-artists">登録・取り込み</small></span></button>
+  <button data-tab="live"><span class="cf-dot" data-n="4">4</span><span class="cf-lbl"><b>ライブTT</b><small id="cfSub-live">ドラッグで調整</small></span></button>
+  <button data-tab="taiban" class="cf-subitem"><span class="cf-dot cf-dot-sub" aria-hidden="true">↳</span><span class="cf-lbl"><b>対バンモード</b><small>1ステージで組む</small></span></button>
+  <button data-tab="tokuten"><span class="cf-dot" data-n="5">5</span><span class="cf-lbl"><b>特典会TT</b><small id="cfSub-tokuten">物販・チェキ</small></span></button>
+  <div class="cf-side-group">配る・共有</div>
+  <button data-tab="output" class="admin-field"><span class="cf-dot" data-n="6">6</span><span class="cf-lbl"><b>出力</b><small id="cfSub-output">PDF・画像・Excel</small></span></button>
+  <button data-tab="sheets"><span class="cf-dot cf-dot-icon" aria-hidden="true">⇄</span><span class="cf-lbl"><b>シート共有</b><small id="cfSub-sheets">未接続</small></span></button>
+  <button data-tab="contactsheet" class="admin-field"><span class="cf-dot cf-dot-icon" aria-hidden="true">✉</span><span class="cf-lbl"><b>出演者連絡シート</b><small>入り時間を送る</small></span></button>
+  <div class="cf-side-group admin-field">記録・裏方</div>
+  <button data-tab="stats" class="admin-field"><span class="cf-dot cf-dot-icon" aria-hidden="true">∑</span><span class="cf-lbl"><b>実績集計</b><small>動員・売上</small></span></button>
+  <button data-tab="master" class="admin-field"><span class="cf-dot cf-dot-icon" aria-hidden="true">≡</span><span class="cf-lbl"><b>アーティストマスタ</b><small>イベントをまたぐ名簿</small></span></button>
+  <button data-tab="staffschedule" class="admin-field"><span class="cf-dot cf-dot-icon" aria-hidden="true">⚑</span><span class="cf-lbl"><b>進行表</b><small>裏方スケジュール</small></span></button>
+  <div class="cf-side-group">当日</div>
+  <button data-tab="clock" class="clock-tab"><span class="cf-dot cf-dot-icon" aria-hidden="true">◷</span><span class="cf-lbl"><b>現在時刻</b><small>開演・終演まで</small></span></button>
+  <div class="cf-progress" id="cfProgress">
+    <span class="cf-progress-label">進み具合</span>
+    <div class="cf-progress-bar"><div id="cfProgressFill"></div></div>
+    <b id="cfProgressText">6つ中 0つ完了</b>
   </div>
 </nav>
-
 <main>
+  <div class="cf-stepbar" id="cfStepbar" hidden>
+    <span class="cf-stepnum" id="cfStepNum">1</span>
+    <div class="cf-steptext"><b id="cfStepTitle"></b><span id="cfStepDesc"></span></div>
+    <button type="button" class="cf-stepwarn" id="cfStepWarn" hidden></button>
+    <div class="cf-stepnav">
+      <button type="button" class="btn secondary" id="cfStepPrev">戻る</button>
+      <button type="button" class="btn cf-next" id="cfStepNext">次へ</button>
+    </div>
+  </div>
 
   <!-- ============ TAB: HOME (top page) ============ -->
   <div class="tabcontent active" id="tab-home">
@@ -1246,7 +1490,97 @@
     <div id="circuitStatusWrap"></div>
   </div>
 
+
+  <!-- ============ TAB: SHEETS (Google スプレッドシート共有) ============ -->
+  <div class="tabcontent" id="tab-sheets">
+    <div class="card cf-sheets-hero">
+      <h2>Googleスプレッドシートでタイテを共有</h2>
+      <p class="helptext">書き出すと、ライブ・特典会のタイムテーブルが<b>時間×ステージの見やすい表</b>になってシートに並びます。チームや出演者側はシートのURLを開くだけで最新版を確認できます。「出演者一覧」シートは直接編集でき、「シートから読み込む」でアプリに反映されます。</p>
+    </div>
+
+    <div class="cf-sheets-grid">
+      <div class="card">
+        <h2>同期する</h2>
+        <div class="cf-sync-status" id="cfSheetsStatus">まだ接続していません。下の「接続設定」を入れてください。</div>
+        <div class="cf-sync-actions">
+          <button type="button" class="btn cf-big-btn" id="cfSheetsPush">
+            <span>シートに書き出す</span><small>今のタイテを共有する</small>
+          </button>
+          <button type="button" class="btn secondary cf-big-btn" id="cfSheetsPull">
+            <span>シートから読み込む</span><small>みんなの更新を取り込む</small>
+          </button>
+        </div>
+        <label class="cf-check"><input type="checkbox" id="cfSheetsAuto"> 変更したら自動で書き出す（数秒おき）</label>
+        <label class="cf-check"><input type="checkbox" id="cfSheetsWatch" checked> シートに新しい更新があったら知らせる</label>
+        <label class="cf-check admin-field"><input type="checkbox" id="cfSheetsShareStats"> 実績（動員・売上・好感度）もシートに含める</label>
+        <p class="helptext">管理者PINはシートには書き出されません。実績はチェックしたときだけ含まれます。</p>
+        <div class="row" style="margin-top:8px;">
+          <a class="btn ghost" id="cfSheetsOpen" href="#" target="_blank" rel="noopener" hidden>スプレッドシートを開く</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>接続設定</h2>
+        <label for="cfSheetsUrl">ウェブアプリのURL（Apps Scriptでデプロイしたもの）</label>
+        <input type="text" id="cfSheetsUrl" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/……/exec">
+        <div class="grid cols2" style="margin-top:10px;">
+          <div>
+            <label for="cfSheetsKey">合言葉</label>
+            <input type="text" id="cfSheetsKey" autocomplete="off" placeholder="スクリプトに書いた合言葉">
+          </div>
+          <div>
+            <label for="cfSheetsName">あなたの名前（更新者として表示）</label>
+            <input type="text" id="cfSheetsName" autocomplete="off" placeholder="例：青栁">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="btn" id="cfSheetsSave">保存して接続テスト</button>
+          <button type="button" class="btn secondary" id="cfSheetsDisconnect">接続を解除</button>
+        </div>
+        <p class="helptext">この設定はこの端末だけに保存されます。iPadなど別の端末でも同じURLと合言葉を入れると、同じシートで共有できます。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>はじめての設定（約5分・最初の1回だけ）</h2>
+      <ol class="cf-setup-steps">
+        <li><b>新しいGoogleスプレッドシートを作る</b><span>Googleドライブで「新規 → Googleスプレッドシート」。名前は「◯◯フェス タイテ」などに。</span></li>
+        <li><b>「拡張機能 → Apps Script」を開いて、コードを貼り付けて保存</b><span>最初から書かれている内容は全部消して、下のボタンでコピーしたコードを貼ります。2行目あたりの <code>SHARED_KEY</code> を好きな合言葉に変えてください。</span>
+          <div class="row" style="margin-top:8px;"><button type="button" class="btn ghost" id="cfCopyGas">コードをコピー</button><button type="button" class="btn secondary" id="cfDownloadGas">ファイルで保存</button><span class="helptext" id="cfCopyGasMsg" style="margin:0"></span></div>
+        </li>
+        <li><b>「デプロイ → 新しいデプロイ」でウェブアプリにする</b><span>種類は「ウェブアプリ」、実行ユーザーは「自分」、アクセスできるユーザーは「全員」。初回は権限の確認が出るので許可します。</span></li>
+        <li><b>表示されたURLを上の「接続設定」に貼って、合言葉と一緒に保存</b><span>「接続しました」と出れば完了。「シートに書き出す」を押すとタイテのシートができます。</span></li>
+        <li><b>スプレッドシートをチームに共有</b><span>シート右上の「共有」から、見てほしい人を「閲覧者」、編集してほしい人を「編集者」で追加します。</span></li>
+      </ol>
+      <p class="helptext">URLを知っていて合言葉が合う人だけが読み書きできます。合言葉は推測されにくいものにしてください。</p>
+    </div>
+  </div>
+
 </main>
+</div>
+
+<div class="cf-selbar" id="cfSelBar" role="toolbar" aria-label="選択中の枠の操作" hidden>
+  <span class="cf-selbar-name" id="cfSelName"></span>
+  <button type="button" class="btn secondary" id="cfSelDup">複製</button>
+  <button type="button" class="btn secondary" id="cfSelCut">未設定に戻す</button>
+  <button type="button" class="btn danger" id="cfSelDel">削除</button>
+  <button type="button" class="btn secondary cf-selbar-close" id="cfSelClose" aria-label="選択を解除">✕</button>
+</div>
+<div class="cf-toast" id="cfToast" role="status" aria-live="polite" hidden>
+  <span id="cfToastText"></span>
+  <button type="button" id="cfToastAction" hidden></button>
+</div>
+<div class="modal-overlay" id="cfConflictModal">
+  <div class="modal-box" style="max-width:440px;">
+    <h3 id="cfConflictTitle">シートが先に更新されています</h3>
+    <p class="helptext" id="cfConflictText"></p>
+    <div class="cf-conflict-actions">
+      <button class="btn" id="cfConflictPull" type="button">シートの内容を読み込む（おすすめ）</button>
+      <button class="btn danger" id="cfConflictForce" type="button">こちらの内容で上書きする</button>
+      <button class="btn secondary" id="cfConflictCancel" type="button">やめる</button>
+    </div>
+  </div>
+</div>
 
 <!-- Hidden print-only content, populated just before printing -->
 <div id="print-area" class="print-output"></div>
@@ -1273,7 +1607,7 @@
   // Date-based version string, bumped whenever a meaningful update is
   // pushed to production — simplest thing that's self-documenting without
   // needing a separate changelog to stay in sync with.
-  const APP_VERSION = "2026.11.24";
+  const APP_VERSION = "2026.11.24-ui1";
   const APP_UPDATED_DATE = "2026年11月24日";
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
@@ -3162,6 +3496,7 @@
     let origLaneId = null, hoverLaneId = null;
     let laneRects = null; // { [laneId]: DOMRect } captured once at drag start
     let duplicateMode = false; // Alt/Option held at drag start: drop creates a copy instead of moving the original
+    let touchPending = false, touchTimer = null, touchX = 0, touchY = 0, touchLastY = 0; // iPad: long-press before a move starts
 
     function laneAtX(clientX){
       if(!laneRects || laneOrderIds.length===0) return origLaneId;
@@ -3179,6 +3514,12 @@
 
     function onPointerMove(ev){
       if(!dragMode) return;
+      if(touchPending){
+        const dx = (ev.clientX||0) - touchX, dy = (ev.clientY||0) - touchY;
+        touchLastY = ev.clientY||0;
+        if(dx*dx + dy*dy > CF_TOUCH_SLOP*CF_TOUCH_SLOP) abortTouch(); // finger moved before the long-press: it's a scroll
+        return;
+      }
       const deltaY = (ev.clientY||0) - dragStartY;
       if(Math.abs(deltaY) < DRAG_THRESHOLD_PX) return;
       const deltaMin = Math.round((deltaY/pxPerMin)/DRAG_SNAP_MIN)*DRAG_SNAP_MIN;
@@ -3219,6 +3560,8 @@
 
     function endDrag(){
       if(!dragMode) return;
+      if(touchTimer){ clearTimeout(touchTimer); touchTimer = null; }
+      touchPending = false; cfTouchDragActive = false; block.classList.remove("touch-armed");
       block.classList.remove("dragging");
       block.classList.remove("duplicating");
       if(hoverLaneId && laneTrackEls[hoverLaneId]) laneTrackEls[hoverLaneId].classList.remove("drag-hover");
@@ -3227,7 +3570,7 @@
       }
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
-      document.removeEventListener("pointercancel", onPointerUp);
+      document.removeEventListener("pointercancel", onPointerCancel);
       const timeChanged = pendingStart!=null && pendingEnd!=null && (pendingStart!==origStartMin || pendingEnd!==origEndMin);
       const laneChanged = dragMode==="move" && hoverLaneId && hoverLaneId!==origLaneId;
       const wasDuplicate = duplicateMode;
@@ -3260,11 +3603,17 @@
       }
     }
     function onPointerUp(){ endDrag(); }
+    function abortTouch(){
+      pendingStart = origStartMin; pendingEnd = origEndMin; hoverLaneId = origLaneId;
+      dragMode = "abort"; endDrag(); // no commit, no selection toggle
+    }
+    function onPointerCancel(){ if(touchPending) abortTouch(); else endDrag(); }
 
     function startDrag(mode){
       return function(ev){
         if(ev.button!=null && ev.button!==0) return; // left click / primary touch only
-        ev.preventDefault();
+        const cfTouch = ev.pointerType==="touch" && mode==="move";
+        if(!cfTouch) ev.preventDefault();
         ev.stopPropagation();
         dragMode = mode;
         duplicateMode = (mode==="move") && !!ev.altKey;
@@ -3281,14 +3630,27 @@
             if(el) laneRects[id] = el.getBoundingClientRect();
           });
         }
-        block.classList.add("dragging");
+        touchPending = cfTouch; touchX = ev.clientX||0; touchY = touchLastY = ev.clientY||0;
+        if(cfTouch){
+          touchTimer = setTimeout(()=>{
+            touchTimer = null;
+            if(!touchPending || !dragMode) return;
+            touchPending = false; cfTouchDragActive = true;
+            dragStartY = touchLastY;
+            block.classList.add("touch-armed"); block.classList.add("dragging");
+            try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){ /* ignore */ }
+          }, CF_LONG_PRESS_MS);
+        } else {
+          if(ev.pointerType==="touch") cfTouchDragActive = true;
+          block.classList.add("dragging");
+        }
         if(duplicateMode) block.classList.add("duplicating");
         if(pointerId!=null && block.setPointerCapture){
           try{ block.setPointerCapture(pointerId); }catch(e){/* noop */}
         }
         document.addEventListener("pointermove", onPointerMove);
         document.addEventListener("pointerup", onPointerUp);
-        document.addEventListener("pointercancel", onPointerUp);
+        document.addEventListener("pointercancel", onPointerCancel);
       };
     }
 
@@ -3393,6 +3755,7 @@
     let dragMode = null, dragStartY = 0, origStartMin = 0, origEndMin = 0, pointerId = null;
     let pendingStart = null, pendingEnd = null, origLaneId = null, hoverLaneId = null, laneRects = null;
     let duplicateMode = false;
+    let touchPending = false, touchTimer = null, touchX = 0, touchY = 0, touchLastY = 0; // iPad: long-press before a move starts
 
     function laneAtX(clientX){
       if(!laneRects || laneOrderIds.length===0) return origLaneId;
@@ -3408,6 +3771,12 @@
     }
     function onPointerMove(ev){
       if(!dragMode) return;
+      if(touchPending){
+        const dx = (ev.clientX||0) - touchX, dy = (ev.clientY||0) - touchY;
+        touchLastY = ev.clientY||0;
+        if(dx*dx + dy*dy > CF_TOUCH_SLOP*CF_TOUCH_SLOP) abortTouch(); // finger moved before the long-press: it's a scroll
+        return;
+      }
       const deltaY = (ev.clientY||0) - dragStartY;
       if(Math.abs(deltaY) < DRAG_THRESHOLD_PX) return;
       const deltaMin = Math.round((deltaY/pxPerMin)/DRAG_SNAP_MIN)*DRAG_SNAP_MIN;
@@ -3441,12 +3810,14 @@
     }
     function endDrag(){
       if(!dragMode) return;
+      if(touchTimer){ clearTimeout(touchTimer); touchTimer = null; }
+      touchPending = false; cfTouchDragActive = false; block.classList.remove("touch-armed");
       block.classList.remove("dragging"); block.classList.remove("duplicating");
       if(hoverLaneId && laneTrackEls[hoverLaneId]) laneTrackEls[hoverLaneId].classList.remove("drag-hover");
       if(pointerId!=null && block.releasePointerCapture){ try{ block.releasePointerCapture(pointerId); }catch(e){/* noop */} }
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
-      document.removeEventListener("pointercancel", onPointerUp);
+      document.removeEventListener("pointercancel", onPointerCancel);
       const timeChanged = pendingStart!=null && pendingEnd!=null && (pendingStart!==origStartMin || pendingEnd!==origEndMin);
       const laneChanged = dragMode==="move" && hoverLaneId && hoverLaneId!==origLaneId;
       const wasDuplicate = duplicateMode;
@@ -3468,10 +3839,17 @@
       }
     }
     function onPointerUp(){ endDrag(); }
+    function abortTouch(){
+      pendingStart = origStartMin; pendingEnd = origEndMin; hoverLaneId = origLaneId;
+      dragMode = "abort"; endDrag(); // no commit, no selection toggle
+    }
+    function onPointerCancel(){ if(touchPending) abortTouch(); else endDrag(); }
     function startDrag(mode){
       return function(ev){
         if(ev.button!=null && ev.button!==0) return;
-        ev.preventDefault(); ev.stopPropagation();
+        const cfTouch = ev.pointerType==="touch" && mode==="move";
+        if(!cfTouch) ev.preventDefault();
+        ev.stopPropagation();
         dragMode = mode;
         duplicateMode = (mode==="move") && !!ev.altKey;
         dragStartY = ev.clientY||0;
@@ -3483,12 +3861,25 @@
           laneRects = {};
           laneOrderIds.forEach(id=>{ const el = laneTrackEls[id]; if(el) laneRects[id] = el.getBoundingClientRect(); });
         }
-        block.classList.add("dragging");
+        touchPending = cfTouch; touchX = ev.clientX||0; touchY = touchLastY = ev.clientY||0;
+        if(cfTouch){
+          touchTimer = setTimeout(()=>{
+            touchTimer = null;
+            if(!touchPending || !dragMode) return;
+            touchPending = false; cfTouchDragActive = true;
+            dragStartY = touchLastY;
+            block.classList.add("touch-armed"); block.classList.add("dragging");
+            try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){ /* ignore */ }
+          }, CF_LONG_PRESS_MS);
+        } else {
+          if(ev.pointerType==="touch") cfTouchDragActive = true;
+          block.classList.add("dragging");
+        }
         if(duplicateMode) block.classList.add("duplicating");
         if(pointerId!=null && block.setPointerCapture){ try{ block.setPointerCapture(pointerId); }catch(e){/* noop */} }
         document.addEventListener("pointermove", onPointerMove);
         document.addEventListener("pointerup", onPointerUp);
-        document.addEventListener("pointercancel", onPointerUp);
+        document.addEventListener("pointercancel", onPointerCancel);
       };
     }
     block.addEventListener("pointerdown", startDrag("move"));
@@ -4433,12 +4824,19 @@
     if(seen) return;
     const hint = document.createElement("div");
     hint.className = "first-use-hint";
-    hint.innerHTML = `
+    if(cfIsCoarse()) hint.innerHTML = `
+      <div>
+        <strong>iPadでの操作：</strong>
+        枠を<b>長押し</b>して少し浮いたら、そのまま指を動かすと移動できます（すぐ動かすと画面のスクロールになります）。
+        枠を<b>タップ</b>で選ぶと、上下のつまみで尺を変えられ、画面下のバーで複製・未設定に戻す・削除ができます。
+      </div>
+      <button type="button" class="btnDismissFirstUseHint">✕ 閉じる</button>`;
+    else hint.innerHTML = `
       <div>
         <strong>知っていると便利な操作：</strong>
         枠にマウスを乗せると、右上に「→特典会」ボタン、左上に「✕削除」「✂切り取り」ボタンが出ます。
         Alt（Windows）／Option（Mac）を押しながらドラッグすると複製できます。
-        枠をクリックして選択すると、Deleteキーで削除、Ctrl+Zで元に戻せます。画面右上の「？ ショートカット」からいつでも一覧を確認できます。
+        枠をクリックして選択すると、Deleteキーで削除、Ctrl+Zで元に戻せます。画面右上の「…その他 → 操作のしかた」からいつでも一覧を確認できます。
       </div>
       <button type="button" class="btnDismissFirstUseHint">✕ 閉じる</button>`;
     wrap.appendChild(hint);
@@ -6646,9 +7044,866 @@
     state = defaultState(); saveState(); renderAll();
   });
 
+
+  // ==========================================================================
+  // 案1 ステップガイド型UI ＋ iPad操作 ＋ Googleスプレッドシート共有
+  // Everything below layers on top of the existing app: it keeps every tab
+  // button (data-tab) and element id the rest of the code relies on, and
+  // hooks in by wrapping renderAll / saveState / selection helpers.
+  // ==========================================================================
+  var CF_LONG_PRESS_MS = 320, CF_TOUCH_SLOP = 10, cfTouchDragActive = false;
+  // While a touch drag is armed, stop iPad Safari from scrolling the page.
+  document.addEventListener("touchmove", function(e){ if(cfTouchDragActive && e.cancelable) e.preventDefault(); }, {passive:false});
+
+  const cfMq = (q)=> !!(window.matchMedia && window.matchMedia(q).matches);
+  const cfIsCoarse = ()=> cfMq("(pointer:coarse)");
+  const cfIsDrawer = ()=> cfMq("(max-width:1024px)");
+  const cfEl = (id)=> document.getElementById(id);
+  const cfHHMM = (d)=> String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+
+  const CF_STEPS = {
+    settings:{ n:"1", title:"基本情報を入れる", short:"基本情報", desc:"イベント名・会場と、ステージ・特典会場・楽屋の名前を登録します。", next:"days" },
+    days:{ n:"2", title:"開催日と時間を決める", short:"開催日", desc:"DAYごとの日付と、ライブ・特典会の時間帯を設定します。", prev:"settings", next:"artists" },
+    artists:{ n:"3", title:"出演者を登録する", short:"出演者", desc:"手入力・CSV・テキストや画像の取り込みで出演者を追加します。", prev:"days", next:"live" },
+    live:{ n:"4", title:"ライブTTを整える", short:"ライブTT",
+      desc:"枠をドラッグして時間とステージを決めます。重なると赤く光ります。",
+      descTouch:"枠を長押しして持ち上げ、そのまま動かします。タップで選ぶと上下のつまみで尺を変えられます。", prev:"artists", next:"tokuten" },
+    taiban:{ n:"4", title:"対バンモードで組む", short:"対バン", desc:"1ステージの対バン形式で、出演順と持ち時間を組みます。", prev:"artists", next:"tokuten" },
+    tokuten:{ n:"5", title:"特典会TTを整える", short:"特典会TT",
+      desc:"物販・チェキ・お見送りの枠を、特典会場ごとにドラッグで配置します。",
+      descTouch:"枠を長押しして動かします。タップで選ぶと尺の変更・複製・削除ができます。", prev:"live", next:"output" },
+    output:{ n:"6", title:"出力して配る", short:"出力", desc:"配布用のPDF、透明PNG、時間軸どおりのExcelで書き出します。", prev:"tokuten", next:"sheets" },
+    sheets:{ n:"⇄", title:"スプレッドシートで共有", short:"シート共有", desc:"タイテをGoogleスプレッドシートに書き出して、チームで同じ最新版を見られるようにします。", prev:"output" },
+    contactsheet:{ n:"✉", title:"出演者連絡シート", desc:"楽屋・入り時間・出演時間をまとめた、マネージャー宛の連絡文を作ります。" },
+    stats:{ n:"∑", title:"実績集計", desc:"動員数・チケット売上・イベンター好感度を集計します。" },
+    master:{ n:"≡", title:"アーティストマスタ", desc:"イベントをまたいで使う名簿から、今のイベントへまとめてブッキングできます。" },
+    staffschedule:{ n:"⚑", title:"進行表", desc:"搬入から撤収まで、担当ごとの裏方スケジュールを作ります。",
+      descTouch:"作業の枠は長押しで移動、タップで選んで尺の変更・複製・削除ができます。" },
+    clock:{ n:"◷", title:"本番当日", desc:"現在時刻と、開演・終演までの残り時間を大きく表示します。" }
+  };
+  const CF_PROGRESS_TABS = ["settings","days","artists","live","tokuten","output"];
+
+  function cfActiveTab(){ const b = document.querySelector("nav.tabs button.active"); return b ? b.dataset.tab : "home"; }
+  function cfTabVisible(tab){ const b = document.querySelector('nav.tabs button[data-tab="'+tab+'"]'); return !!(b && b.style.display!=="none"); }
+  function cfGo(tab){ const b = document.querySelector('nav.tabs button[data-tab="'+tab+'"]'); if(b && b.style.display!=="none"){ b.click(); return true; } return false; }
+
+  function cfStepStatus(){
+    let hasExported = false;
+    try{ hasExported = localStorage.getItem("cuefes_has_exported_once")==="1"; }catch(e){ /* ignore */ }
+    const names = new Set(state.artists.map(a=>(a.name||"").trim()).filter(Boolean));
+    const placed = (kind)=> state.artists.filter(a=> kind==="live"
+      ? (a.stageId && isValidTime(a.liveStart) && isValidTime(a.liveEnd))
+      : (a.tokutenSpotId && isValidTime(a.tokutenStart) && isValidTime(a.tokutenEnd))).length;
+    const total = state.artists.length;
+    const evName = (state.event.name||"").trim();
+    const missingDates = state.days.some(d=>!d.date);
+    const pl = placed("live"), pt = placed("tokuten");
+    return {
+      settings:{ done: !!evName && state.stages.length>0, sub: evName || "イベント名・会場" },
+      days:{ done: state.days.length>0 && !missingDates, sub: state.days.length+"日間"+(missingDates?"（日付未設定あり）":"") },
+      artists:{ done: total>0, sub: names.size ? names.size+"組 登録済み" : "登録・取り込み" },
+      live:{ done: pl>0, sub: total ? pl+"/"+total+" 枠を配置" : "ドラッグで調整" },
+      tokuten:{ done: pt>0, sub: total ? pt+"/"+total+" 枠を配置" : "物販・チェキ" },
+      output:{ done: hasExported, sub: hasExported ? "出力済み" : "PDF・画像・Excel" }
+    };
+  }
+
+  function cfUpdateSide(){
+    const st = cfStepStatus();
+    const active = cfActiveTab();
+    Object.keys(st).forEach(k=>{
+      const sub = cfEl("cfSub-"+k); if(sub) sub.textContent = st[k].sub;
+      const dot = document.querySelector('nav.tabs button[data-tab="'+k+'"] .cf-dot[data-n]');
+      if(dot){
+        const showCheck = st[k].done && k!==active;
+        dot.textContent = showCheck ? "✓" : dot.dataset.n;
+        dot.classList.toggle("is-done", !!st[k].done);
+      }
+    });
+    const done = CF_PROGRESS_TABS.filter(k=>st[k].done).length;
+    cfEl("cfProgressFill").style.width = Math.round(done/CF_PROGRESS_TABS.length*100)+"%";
+    cfEl("cfProgressText").textContent = CF_PROGRESS_TABS.length+"つ中 "+done+"つ完了";
+    const ss = cfEl("cfSub-sheets");
+    if(ss) ss.textContent = !cfSheets.url ? "Googleスプレッドシート" : (cfSheets.lastPushAt||cfSheets.lastPullAt) ? "最終同期 "+cfHHMM(new Date(Math.max(cfSheets.lastPushAt||0, cfSheets.lastPullAt||0))) : "接続済み";
+    cfEl("cfEvName").textContent = (state.event.name||"").trim() || "イベント名 未設定";
+  }
+
+  function cfNextTarget(tab){
+    let n = CF_STEPS[tab] && CF_STEPS[tab].next;
+    if(n==="output" && !cfTabVisible("output")) n = "sheets";
+    return n;
+  }
+  function cfUpdateStepbar(){
+    const tab = cfActiveTab();
+    const s = CF_STEPS[tab];
+    const bar = cfEl("cfStepbar");
+    if(!s){ bar.hidden = true; return; }
+    bar.hidden = false;
+    cfEl("cfStepNum").textContent = s.n;
+    cfEl("cfStepTitle").textContent = s.title;
+    cfEl("cfStepDesc").textContent = (cfIsCoarse() && s.descTouch) ? s.descTouch : s.desc;
+    const prev = cfEl("cfStepPrev"), next = cfEl("cfStepNext");
+    prev.hidden = !s.prev;
+    const nt = cfNextTarget(tab);
+    next.hidden = !nt;
+    if(nt) next.textContent = "次へ："+(CF_STEPS[nt].short||CF_STEPS[nt].title);
+    // 重なり・転換不足の警告
+    const warn = cfEl("cfStepWarn");
+    const scope = cfEl("tab-"+tab);
+    const conflicts = scope ? scope.querySelectorAll(".block.conflict").length : 0;
+    const buffers = scope ? scope.querySelectorAll(".block.bufferwarn").length : 0;
+    if(conflicts || buffers){
+      warn.hidden = false;
+      warn.textContent = [conflicts?("重なり "+conflicts+"件"):"", buffers?("転換不足 "+buffers+"件"):""].filter(Boolean).join("・")+" →";
+    } else warn.hidden = true;
+  }
+  cfEl("cfStepWarn").addEventListener("click", ()=>{
+    const scope = cfEl("tab-"+cfActiveTab());
+    const el = scope && (scope.querySelector(".block.conflict") || scope.querySelector(".block.bufferwarn"));
+    if(el) el.scrollIntoView({behavior:"smooth", block:"center", inline:"center"});
+  });
+  cfEl("cfStepPrev").addEventListener("click", ()=>{ const s = CF_STEPS[cfActiveTab()]; if(s && s.prev) cfGo(s.prev); });
+  cfEl("cfStepNext").addEventListener("click", ()=>{ const n = cfNextTarget(cfActiveTab()); if(n) cfGo(n); });
+
+  // ---- tab navigation hooks (runs after the original tab handler) ----
+  function cfCloseDrawer(){ document.body.classList.remove("cf-side-open"); cfEl("cfSideToggle").setAttribute("aria-expanded","false"); }
+  document.querySelectorAll("nav.tabs button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(cfIsDrawer()) cfCloseDrawer();
+      window.scrollTo(0,0);
+      cfUpdateSide(); cfUpdateStepbar(); cfUpdateSelBar();
+    });
+  });
+  cfEl("hdrTitle").addEventListener("click", ()=>{
+    const hb = document.querySelector('nav.tabs button[data-tab="home"]'); if(hb) hb.classList.add("active");
+    cfCloseDrawer(); cfUpdateSide(); cfUpdateStepbar();
+  });
+  cfEl("cfSideToggle").addEventListener("click", ()=>{
+    const open = !document.body.classList.contains("cf-side-open");
+    document.body.classList.toggle("cf-side-open", open);
+    cfEl("cfSideToggle").setAttribute("aria-expanded", open?"true":"false");
+  });
+  cfEl("cfSideBackdrop").addEventListener("click", cfCloseDrawer);
+
+  // ---- header menu ----
+  const cfMenu = cfEl("cfMenu"), cfMenuBtn = cfEl("cfMenuBtn");
+  function cfSetMenu(open){ cfMenu.hidden = !open; cfMenuBtn.setAttribute("aria-expanded", open?"true":"false"); }
+  cfMenuBtn.addEventListener("click", ev=>{ ev.stopPropagation(); cfSetMenu(cfMenu.hidden); });
+  cfMenu.addEventListener("click", ()=> setTimeout(()=>cfSetMenu(false), 0));
+  document.addEventListener("click", ev=>{ if(!cfMenu.hidden && !ev.target.closest(".cf-menu-wrap")) cfSetMenu(false); });
+  document.addEventListener("keydown", ev=>{ if(ev.key==="Escape"){ cfSetMenu(false); cfCloseDrawer(); } });
+  cfEl("cfBtnPdf").addEventListener("click", ()=>{
+    if(cfGo("output")) return;
+    cfToast("PDF出力は管理者ログインのあとで使えます");
+    cfEl("btnAdminToggle").click();
+  });
+
+  // ---- save status ----
+  let cfLastSavedAt = null;
+  function cfUpdateSaveStatus(){
+    cfEl("cfSaveStatus").textContent = cfLastSavedAt ? "自動保存済み・"+cfHHMM(cfLastSavedAt) : "このブラウザに自動保存";
+  }
+
+  // ---- toast ----
+  let cfToastTimer = null;
+  function cfToast(text, actionLabel, onAction){
+    const t = cfEl("cfToast"), a = cfEl("cfToastAction");
+    cfEl("cfToastText").textContent = text;
+    a.hidden = !actionLabel;
+    a.textContent = actionLabel || "";
+    a.onclick = actionLabel ? ()=>{ t.hidden = true; onAction(); } : null;
+    t.hidden = false;
+    clearTimeout(cfToastTimer);
+    cfToastTimer = setTimeout(()=>{ t.hidden = true; }, actionLabel ? 7000 : 3500);
+  }
+  let cfSeenDeleteSnapshot = null;
+
+  // ---- selection action bar (iPad: big buttons instead of hover icons / Delete key) ----
+  function cfSelectedItem(){
+    if(!selectedBlockInfo) return null;
+    if(selectedBlockInfo.kind==="artist"){ const a = byId(state.artists, selectedBlockInfo.id); return a ? {kind:"artist", obj:a, label:a.name} : null; }
+    if(selectedBlockInfo.kind==="staffTask"){ const t = byId(state.staffTasks, selectedBlockInfo.id); return t ? {kind:"staffTask", obj:t, label:t.label} : null; }
+    return null;
+  }
+  function cfSelTtKind(){ return cfActiveTab()==="tokuten" ? "tokuten" : "live"; }
+  function cfUpdateSelBar(){
+    const bar = cfEl("cfSelBar");
+    const it = cfSelectedItem();
+    if(!it || isViewOnlyLocked()){ bar.hidden = true; return; }
+    bar.hidden = false;
+    cfEl("cfSelName").textContent = it.label || "（無題）";
+    cfEl("cfSelCut").hidden = it.kind!=="artist";
+    const panelOpen = cfEl("artistDetailPanel").classList.contains("open") && !cfMq("(max-width:600px)");
+    bar.style.left = panelOpen ? "calc((100vw - 340px) / 2)" : "";
+  }
+  cfEl("cfSelClose").addEventListener("click", ()=> clearBlockSelection());
+  cfEl("cfSelDel").addEventListener("click", ()=> deleteSelectedBlock());
+  cfEl("cfSelCut").addEventListener("click", ()=>{
+    const it = cfSelectedItem(); if(!it || it.kind!=="artist") return;
+    const a = it.obj, k = cfSelTtKind();
+    if(k==="live"){ a.liveStart=""; a.liveEnd=""; a.stageId=""; } else { a.tokutenStart=""; a.tokutenEnd=""; a.tokutenSpotId=""; }
+    clearBlockSelection(); saveState(); renderAll();
+    cfToast("「"+a.name+"」を未設定に戻しました（上の「未設定」からいつでも置き直せます）");
+  });
+  cfEl("cfSelDup").addEventListener("click", ()=>{
+    const it = cfSelectedItem(); if(!it) return;
+    if(it.kind==="artist"){
+      const a = it.obj, k = cfSelTtKind();
+      const sK = k==="live"?"liveStart":"tokutenStart", eK = k==="live"?"liveEnd":"tokutenEnd";
+      const clone = Object.assign({}, a, { id:uid() });
+      // 複製した側は、もう一方のタイテには置かない（重なり防止）
+      if(k==="live"){ clone.tokutenStart=""; clone.tokutenEnd=""; clone.tokutenSpotId=""; }
+      else { clone.liveStart=""; clone.liveEnd=""; clone.stageId=""; }
+      if(isValidTime(a[sK]) && isValidTime(a[eK])){
+        const gap = k==="live" ? (parseInt(a.changeoverMin,10)||0) : 0;
+        const dur = timeToMin(a[eK]) - timeToMin(a[sK]);
+        const ns = timeToMin(a[eK]) + gap;
+        clone[sK] = minToTime(ns); clone[eK] = minToTime(ns+dur);
+      }
+      state.artists.push(clone);
+      clearBlockSelection(); saveState(); renderAll();
+      cfToast("「"+a.name+"」を複製して、すぐ後ろに置きました");
+    } else {
+      const t = it.obj;
+      const clone = Object.assign({}, t, { id:uid() });
+      if(isValidTime(t.start) && isValidTime(t.end)){
+        const dur = timeToMin(t.end) - timeToMin(t.start);
+        clone.start = t.end; clone.end = minToTime(timeToMin(t.end)+dur);
+      }
+      state.staffTasks.push(clone);
+      clearBlockSelection(); saveState(); renderAll();
+      cfToast("「"+t.label+"」を複製しました");
+    }
+  });
+
+  // ---- wrap core functions ----
+  const cfOrigRenderAll = renderAll;
+  renderAll = function(){
+    cfOrigRenderAll();
+    cfUpdateSide(); cfUpdateStepbar(); cfUpdateSelBar();
+    if(lastDeletedSnapshot && lastDeletedSnapshot!==cfSeenDeleteSnapshot){
+      cfSeenDeleteSnapshot = lastDeletedSnapshot;
+      const d = lastDeletedSnapshot.data || {};
+      cfToast("「"+(d.name||d.label||"")+"」を削除しました", "元に戻す", ()=> undoLastDelete());
+    }
+  };
+  const cfOrigSaveState = saveState;
+  saveState = function(){
+    cfOrigSaveState();
+    cfLastSavedAt = new Date(); cfUpdateSaveStatus();
+    cfSheetsOnLocalChange();
+  };
+  const cfOrigToggleSel = toggleBlockSelection;
+  toggleBlockSelection = function(kind, id, el){ cfOrigToggleSel(kind, id, el); cfUpdateSelBar(); };
+  const cfOrigClearSel = clearBlockSelection;
+  clearBlockSelection = function(){ cfOrigClearSel(); cfUpdateSelBar(); };
+
+  // ==========================================================================
+  // Google スプレッドシート共有（Apps Script のウェブアプリ経由）
+  // ==========================================================================
+  const CF_SHEETS_KEY = "cuefes_sheets_cfg_demo";
+  let cfSheets = {};
+  try{ cfSheets = JSON.parse(localStorage.getItem(CF_SHEETS_KEY)||"{}") || {}; }catch(e){ cfSheets = {}; }
+  if(cfSheets.watch==null) cfSheets.watch = true;
+  function cfSaveSheetsCfg(){ try{ localStorage.setItem(CF_SHEETS_KEY, JSON.stringify(cfSheets)); }catch(e){ /* ignore */ } }
+  let cfSuppressAuto = false, cfAutoTimer = null, cfBusy = false, cfAutoPaused = false, cfPendingConflict = null;
+
+  const CF_ERRORS = {
+    bad_key:"合言葉が違います。スクリプトに書いた SHARED_KEY と同じものを入れてください。",
+    key_not_set:"スクリプトの合言葉（SHARED_KEY）がまだ初期値です。書き換えて保存し、デプロイし直してください。",
+    unknown_action:"スクリプトが古いかもしれません。最新のコードを貼り直してデプロイしてください。",
+    bad_state:"書き出すデータが正しくありません。",
+    no_url:"先に「接続設定」でウェブアプリのURLを入れてください。",
+    network:"接続できませんでした。URLと、デプロイ設定の「アクセスできるユーザー：全員」を確認してください。"
+  };
+  function cfErrText(e){ return CF_ERRORS[e] || ("エラー："+e); }
+
+  async function cfApi(action, payload){
+    if(!cfSheets.url) return { ok:false, error:"no_url" };
+    let res;
+    try{
+      // text/plain の「単純なリクエスト」にして、Apps Script でもCORSの事前確認が走らないようにする
+      res = await fetch(cfSheets.url, { method:"POST", redirect:"follow",
+        headers:{ "Content-Type":"text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ action, key: cfSheets.key||"" }, payload||{})) });
+    }catch(e){ return { ok:false, error:"network" }; }
+    try{ return await res.json(); }catch(e){ return { ok:false, error:"network" }; }
+  }
+
+  function cfSetStatus(text, kind){
+    const el = cfEl("cfSheetsStatus"); if(!el) return;
+    el.textContent = text; el.className = "cf-sync-status"+(kind?" "+kind:"");
+  }
+  function cfRemoteLine(j){
+    return j && j.rev ? "シートの最新：第"+j.rev+"版"+(j.updatedAt?"（"+j.updatedAt+(j.updatedBy?"・"+j.updatedBy:"")+"）":"") : "シートはまだ空です";
+  }
+  function cfUpdatePill(mode, text){
+    const p = cfEl("cfSyncPill");
+    if(!cfSheets.url){ p.hidden = true; return; }
+    p.hidden = false;
+    p.classList.toggle("is-new", mode==="new");
+    p.classList.toggle("is-error", mode==="error");
+    p.dataset.mode = mode||"";
+    p.textContent = text || (cfSheets.lastPushAt||cfSheets.lastPullAt ? "シート共有 "+cfHHMM(new Date(Math.max(cfSheets.lastPushAt||0, cfSheets.lastPullAt||0))) : "シート共有：接続済み");
+  }
+  function cfApplyRemoteMeta(j){
+    if(j.sheetUrl){ cfSheets.sheetUrl = j.sheetUrl; const o = cfEl("cfSheetsOpen"); o.href = j.sheetUrl; o.hidden = false; }
+  }
+
+  function cfStateForShare(){
+    const s = JSON.parse(JSON.stringify(state));
+    s.event.adminPin = ""; // PINは絶対に共有しない
+    if(!cfSheets.shareStats || !adminFieldsVisible()){
+      s.artists.forEach(a=>{ a.audience=""; a.ticketSales=""; a.favorability=""; });
+    }
+    return s;
+  }
+
+  async function cfPush(force, fromAuto){
+    if(cfBusy) return;
+    if(!cfSheets.url){ cfSetStatus(cfErrText("no_url"), "err"); return; }
+    cfBusy = true;
+    cfSetStatus("シートに書き出しています…");
+    cfUpdatePill("", "書き出し中…");
+    const j = await cfApi("push", { state: cfStateForShare(), by: cfSheets.name||"", baseRev: cfSheets.rev==null ? null : cfSheets.rev, force: !!force });
+    cfBusy = false;
+    if(j.ok){
+      cfSheets.rev = j.rev; cfSheets.lastPushAt = Date.now(); cfAutoPaused = false; cfApplyRemoteMeta(j); cfSaveSheetsCfg();
+      cfSetStatus("書き出しました（第"+j.rev+"版・"+cfHHMM(new Date())+"）。シートを開くと最新のタイテが見られます。", "ok");
+      cfUpdatePill(); cfUpdateSide();
+      if(!fromAuto) cfToast("スプレッドシートに書き出しました");
+    } else if(j.conflict){
+      cfAutoPaused = true;
+      cfPendingConflict = j;
+      cfSetStatus((j.conflict==="sheet_edited" ? "シートの「出演者一覧」が直接編集されています。" : "ほかの人が先にシートを更新しています。")+" "+cfRemoteLine(j), "err");
+      cfUpdatePill("error", "シートと食い違いあり");
+      if(!fromAuto) cfOpenConflict(j);
+    } else {
+      cfSetStatus(cfErrText(j.error)+(j.message?"（"+j.message+"）":""), "err");
+      cfUpdatePill("error", "シート共有エラー");
+    }
+  }
+
+  function cfNormTime(v){
+    v = String(v||"").trim();
+    if(!v) return "";
+    if(/^\d{1,2}:\d{2}$/.test(v)) return v.padStart(5,"0");
+    const t = normalizeTypedTime(v);
+    return t || null; // null = 読めない値（変更しない）
+  }
+  // 「出演者一覧」シートで直接編集された内容を、読み込んだデータに反映する
+  function cfApplySheetRows(ns, rows){
+    const res = { changed:0, added:0, unknown:[] };
+    const findByName = (list, name)=> (list||[]).find(x=>(x.name||"").trim()===name);
+    const setRef = (a, key, list, val, label)=>{
+      val = (val||"").trim();
+      if(!val){ a[key] = ""; return; }
+      const hit = findByName(list, val);
+      if(hit) a[key] = hit.id; else res.unknown.push(label+"「"+val+"」");
+    };
+    const setTime = (a, key, val)=>{ const t = cfNormTime(val); if(t!==null) a[key] = t; };
+    rows.forEach(r=>{
+      const id = (r["ID"]||"").trim(), name = (r["アーティスト名"]||"").trim();
+      if(!id && !name) return;
+      let a = id ? ns.artists.find(x=>x.id===id) : null;
+      let isNew = false;
+      if(!a){
+        if(!name) return;
+        a = { id:uid(), color: PALETTE[ns.artists.length % PALETTE.length], dayId: ns.days[0] ? ns.days[0].id : "",
+              name:"", stageId:"", liveStart:"", liveEnd:"", durationMin:"", changeoverMin:"",
+              tokutenSpotId:"", tokutenStart:"", tokutenEnd:"", tokutenDurationMin:"",
+              greenRoomId:"", callTime:"", memo:"", audience:"", ticketSales:"", favorability:"" };
+        isNew = true;
+      }
+      const before = JSON.stringify(a);
+      if(name) a.name = name;
+      const dl = (r["DAY"]||"").trim();
+      if(dl){ const d = ns.days.find(x=>x.label===dl); if(d) a.dayId = d.id; else res.unknown.push("DAY「"+dl+"」"); }
+      setRef(a, "stageId", ns.stages, r["ステージ"], "ステージ");
+      setTime(a, "liveStart", r["ライブ開始"]); setTime(a, "liveEnd", r["ライブ終了"]);
+      setRef(a, "tokutenSpotId", ns.tokutenSpots, r["特典会場"], "特典会場");
+      setTime(a, "tokutenStart", r["特典会開始"]); setTime(a, "tokutenEnd", r["特典会終了"]);
+      setRef(a, "greenRoomId", ns.greenRooms, r["楽屋"], "楽屋");
+      setTime(a, "callTime", r["入り時間"]);
+      if(r["メモ"]!=null) a.memo = r["メモ"];
+      if(JSON.stringify(a)!==before || isNew){
+        syncDurationFromTimes(a, "live"); syncDurationFromTimes(a, "tokuten");
+        if(isNew){ ns.artists.push(a); res.added++; } else res.changed++;
+      }
+    });
+    return res;
+  }
+
+  async function cfPull(skipConfirm){
+    if(cfBusy) return;
+    if(!cfSheets.url){ cfSetStatus(cfErrText("no_url"), "err"); return; }
+    cfBusy = true;
+    cfSetStatus("シートから読み込んでいます…");
+    const j = await cfApi("pull", {});
+    cfBusy = false;
+    if(!j.ok){ cfSetStatus(cfErrText(j.error), "err"); cfUpdatePill("error", "シート共有エラー"); return; }
+    cfApplyRemoteMeta(j);
+    if(!j.state || !j.state.days || !j.state.artists){
+      cfSetStatus("シートにはまだCueFesのデータがありません。先に「シートに書き出す」を押してください。");
+      cfSheets.rev = j.rev||0; cfSaveSheetsCfg(); cfUpdatePill(); return;
+    }
+    if(!skipConfirm && !confirm("スプレッドシートの内容で、この端末のイベントデータを置き換えます。よろしいですか？\n（"+cfRemoteLine(j)+"）")){ cfSetStatus(cfRemoteLine(j)); return; }
+    const ns = normalizePrintStyle(j.state);
+    ns.event.adminPin = state.event.adminPin || ""; // PINはこの端末のものを残す
+    const localById = {};
+    state.artists.forEach(a=>{ localById[a.id] = a; });
+    ns.artists.forEach(a=>{
+      const l = localById[a.id];
+      if(l) ["audience","ticketSales","favorability"].forEach(k=>{ if(!a[k] && l[k]) a[k] = l[k]; });
+    });
+    const applied = cfApplySheetRows(ns, j.rows||[]);
+    state = ns;
+    cfSuppressAuto = true; saveState(); cfSuppressAuto = false;
+    clearBlockSelection();
+    renderAll();
+    cfSheets.rev = j.rev; cfSheets.lastPullAt = Date.now(); cfAutoPaused = false; cfPendingConflict = null; cfSaveSheetsCfg();
+    let msg = "読み込みました（"+cfRemoteLine(j)+"）。";
+    if(applied.changed || applied.added){
+      msg += " シートで直接編集された"+(applied.changed?applied.changed+"件の変更":"")+(applied.changed&&applied.added?"と":"")+(applied.added?applied.added+"組の追加":"")+"を反映しました。";
+    }
+    if(applied.unknown.length) msg += " ※名前が一致しない項目は変更しませんでした："+applied.unknown.slice(0,5).join("、")+(applied.unknown.length>5?" ほか":"");
+    cfSetStatus(msg, "ok");
+    cfUpdatePill(); cfUpdateSide();
+    cfToast("スプレッドシートから読み込みました");
+    // シートで編集された内容を取り込んだら、タイテ表のシートにもすぐ反映しておく
+    if(applied.changed || applied.added || j.sheetEdited){
+      const revBefore = cfSheets.rev;
+      await cfPush(true, true);
+      if(cfSheets.rev!==revBefore) cfSetStatus(msg+" タイテ表のシートも最新に作り直しました（第"+cfSheets.rev+"版）。", "ok");
+    }
+  }
+
+  function cfOpenConflict(j){
+    cfEl("cfConflictTitle").textContent = j.conflict==="sheet_edited" ? "シートが直接編集されています" : "シートが先に更新されています";
+    cfEl("cfConflictText").textContent = (j.conflict==="sheet_edited"
+      ? "スプレッドシートの「出演者一覧」に、まだこの端末に取り込んでいない編集があります。"
+      : "ほかの人（または別の端末）が先にシートを更新しています。")
+      + "\n" + cfRemoteLine(j)
+      + "\nふつうは「読み込む」を選んで、最新の状態から続けてください。";
+    cfEl("cfConflictModal").style.display = "flex";
+  }
+  function cfCloseConflict(){ cfEl("cfConflictModal").style.display = "none"; }
+  cfEl("cfConflictPull").addEventListener("click", ()=>{ cfCloseConflict(); cfPull(true); });
+  cfEl("cfConflictForce").addEventListener("click", ()=>{
+    cfCloseConflict();
+    if(confirm("シート側の更新は消えて、この端末の内容で上書きされます。本当によろしいですか？")) cfPush(true);
+  });
+  cfEl("cfConflictCancel").addEventListener("click", cfCloseConflict);
+
+  function cfSheetsOnLocalChange(){
+    if(cfSuppressAuto || !cfSheets.url || !cfSheets.auto || cfAutoPaused) return;
+    clearTimeout(cfAutoTimer);
+    cfUpdatePill("", "未共有の変更あり");
+    cfAutoTimer = setTimeout(()=> cfPush(false, true), 4000);
+  }
+
+  async function cfWatchTick(){
+    if(!cfSheets.url || !cfSheets.watch || cfBusy || document.visibilityState!=="visible") return;
+    const j = await cfApi("ping", {});
+    if(!j.ok) return;
+    cfApplyRemoteMeta(j);
+    if((j.rev||0) > (cfSheets.rev||0) || (j.sheetEdited && j.rev>0)){
+      cfUpdatePill("new", j.updatedBy && !j.sheetEdited ? j.updatedBy+"さんの更新あり" : "シートに更新あり");
+    }
+  }
+  setInterval(cfWatchTick, 45000);
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") cfWatchTick(); });
+
+  cfEl("cfSyncPill").addEventListener("click", ()=>{
+    const mode = cfEl("cfSyncPill").dataset.mode;
+    if(mode==="new"){ cfPull(false); return; }
+    if(mode==="error" && cfPendingConflict){ cfOpenConflict(cfPendingConflict); return; }
+    cfGo("sheets");
+  });
+
+  function cfFillSheetsForm(){
+    cfEl("cfSheetsUrl").value = cfSheets.url||"";
+    cfEl("cfSheetsKey").value = cfSheets.key||"";
+    cfEl("cfSheetsName").value = cfSheets.name||"";
+    cfEl("cfSheetsAuto").checked = !!cfSheets.auto;
+    cfEl("cfSheetsWatch").checked = cfSheets.watch!==false;
+    cfEl("cfSheetsShareStats").checked = !!cfSheets.shareStats;
+    if(cfSheets.sheetUrl){ cfEl("cfSheetsOpen").href = cfSheets.sheetUrl; cfEl("cfSheetsOpen").hidden = false; }
+    if(cfSheets.url) cfSetStatus("接続済み。"+(cfSheets.rev ? "この端末は第"+cfSheets.rev+"版まで同期しています。" : "まだ同期していません。"));
+  }
+  cfEl("cfSheetsSave").addEventListener("click", async ()=>{
+    const url = cfEl("cfSheetsUrl").value.trim();
+    if(url && !/^https:\/\/script\.google(usercontent)?\.com\//.test(url)){
+      cfSetStatus("URLは https://script.google.com/macros/s/…/exec の形のものを貼ってください。", "err"); return;
+    }
+    const changedTarget = url !== (cfSheets.url||"");
+    cfSheets.url = url; cfSheets.key = cfEl("cfSheetsKey").value.trim(); cfSheets.name = cfEl("cfSheetsName").value.trim();
+    if(changedTarget){ cfSheets.rev = null; cfSheets.lastPushAt = 0; cfSheets.lastPullAt = 0; cfSheets.sheetUrl = ""; cfEl("cfSheetsOpen").hidden = true; }
+    cfSaveSheetsCfg();
+    if(!url){ cfSetStatus(cfErrText("no_url"), "err"); cfUpdatePill(); return; }
+    cfSetStatus("接続テスト中…");
+    const j = await cfApi("ping", {});
+    if(!j.ok){ cfSetStatus(cfErrText(j.error), "err"); cfUpdatePill("error", "シート共有エラー"); return; }
+    cfApplyRemoteMeta(j); cfSaveSheetsCfg();
+    if(j.rev>0 && cfSheets.rev==null){
+      cfSetStatus("接続しました。シートには既にデータがあります（"+cfRemoteLine(j)+"）。まず「シートから読み込む」で最新を取り込んでください。", "ok");
+      cfUpdatePill("new", "シートに既存データあり");
+    } else {
+      cfSetStatus("接続しました。"+cfRemoteLine(j)+"。「シートに書き出す」でタイテを共有できます。", "ok");
+      cfUpdatePill();
+    }
+    cfUpdateSide();
+  });
+  cfEl("cfSheetsDisconnect").addEventListener("click", ()=>{
+    if(!cfSheets.url) return;
+    if(!confirm("この端末のスプレッドシート接続を解除します（シート側のデータは消えません）。")) return;
+    cfSheets = { watch:true }; cfSaveSheetsCfg(); cfFillSheetsForm();
+    cfEl("cfSheetsOpen").hidden = true;
+    cfSetStatus("接続を解除しました。");
+    cfUpdatePill(); cfUpdateSide();
+  });
+  cfEl("cfSheetsPush").addEventListener("click", ()=> cfPush(false));
+  cfEl("cfSheetsPull").addEventListener("click", ()=> cfPull(false));
+  cfEl("cfSheetsAuto").addEventListener("change", e=>{ cfSheets.auto = e.target.checked; cfAutoPaused = false; cfSaveSheetsCfg(); });
+  cfEl("cfSheetsWatch").addEventListener("change", e=>{ cfSheets.watch = e.target.checked; cfSaveSheetsCfg(); });
+  cfEl("cfSheetsShareStats").addEventListener("change", e=>{ cfSheets.shareStats = e.target.checked; cfSaveSheetsCfg(); });
+  cfEl("cfCopyGas").addEventListener("click", async ()=>{
+    const code = cfEl("cfGasCode").textContent.trim()+"\n";
+    let ok = false;
+    try{ await navigator.clipboard.writeText(code); ok = true; }catch(e){
+      const ta = document.createElement("textarea"); ta.value = code; document.body.appendChild(ta); ta.select();
+      try{ ok = document.execCommand("copy"); }catch(e2){ ok = false; }
+      ta.remove();
+    }
+    cfEl("cfCopyGasMsg").textContent = ok ? "コピーしました。Apps Scriptに貼り付けてください。" : "コピーできませんでした。「ファイルで保存」を使ってください。";
+  });
+  cfEl("cfDownloadGas").addEventListener("click", ()=>{
+    downloadBlob(cfEl("cfGasCode").textContent.trim()+"\n", "CueFes_Code.gs", "text/plain;charset=utf-8");
+  });
+
+  // ---- initial paint ----
+  (function cfInit(){
+    const hb = document.querySelector('nav.tabs button[data-tab="home"]');
+    if(hb && !document.querySelector("nav.tabs button.active")) hb.classList.add("active");
+    cfFillSheetsForm();
+    cfUpdatePill();
+    cfUpdateSaveStatus();
+    window.addEventListener("resize", ()=>{ if(!cfIsDrawer()) cfCloseDrawer(); cfUpdateStepbar(); });
+    if(cfSheets.url) setTimeout(cfWatchTick, 1500);
+  })();
+
   if(applyPlaceMasterToState(false)>0) saveState();
   renderAll();
 })();
+</script>
+<script type="text/plain" id="cfGasCode">
+/**
+ * CueFes ⇄ Google スプレッドシート連携スクリプト
+ *
+ * 使い方（約5分）
+ *  1. 新しいGoogleスプレッドシートを作る
+ *  2. メニュー「拡張機能」→「Apps Script」を開き、このコードを全部貼り付けて保存
+ *  3. 下の SHARED_KEY（合言葉）を好きな文字列に変える
+ *  4. 右上「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」
+ *       次のユーザーとして実行：自分
+ *       アクセスできるユーザー：全員
+ *     →「デプロイ」→ 表示された「ウェブアプリのURL」をコピー
+ *  5. CueFes の「スプレッドシート共有」画面に URL と合言葉を入れて「接続テスト」
+ *
+ * 作られるシート
+ *  - 概要            : イベント名・最終更新者・更新日時
+ *  - 出演者一覧      : 1行1組。ここを直接編集 →「シートから読み込む」でアプリに反映できます
+ *  - ライブ DAY1 など : 時間×ステージの見やすいタイテ（書き出すたびに作り直し。編集しても反映されません）
+ *  - 特典会 DAY1 など : 同上
+ *  - _cuefes_data    : アプリ用のデータ（非表示。触らないでください）
+ */
+
+// ▼ 合言葉。CueFes側にも同じものを入れます。空にすると誰でも読み書きできてしまうので必ず設定してください。
+const SHARED_KEY = 'ここを合言葉に変える';
+
+const DATA_SHEET = '_cuefes_data';
+const ARTIST_SHEET = '出演者一覧';
+const SUMMARY_SHEET = '概要';
+const LIVE_PREFIX = 'ライブ ';
+const TOKUTEN_PREFIX = '特典会 ';
+const CHUNK = 40000; // 1セル50,000文字制限より少し小さく
+const SLOT_MIN = 5;  // タイテシートの1行あたりの分数
+
+const ARTIST_HEADERS = ['ID', 'DAY', 'アーティスト名', 'ステージ', 'ライブ開始', 'ライブ終了',
+  '特典会場', '特典会開始', '特典会終了', '楽屋', '入り時間', 'メモ'];
+
+function doGet(e) { return handle_((e && e.parameter) || {}); }
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse(e.postData.contents); } catch (err) { return out_({ ok: false, error: 'bad_json' }); }
+  return handle_(body);
+}
+
+function handle_(p) {
+  if (!SHARED_KEY || SHARED_KEY === 'ここを合言葉に変える') return out_({ ok: false, error: 'key_not_set' });
+  if (String(p.key || '') !== SHARED_KEY) return out_({ ok: false, error: 'bad_key' });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    switch (p.action) {
+      case 'ping': return out_(Object.assign({ ok: true }, meta_()));
+      case 'pull': return out_(pull_());
+      case 'push': return out_(push_(p));
+      default: return out_({ ok: false, error: 'unknown_action' });
+    }
+  } catch (err) {
+    return out_({ ok: false, error: 'server_error', message: String(err && err.message || err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function out_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function props_() { return PropertiesService.getScriptProperties(); }
+function meta_() {
+  const pr = props_();
+  return {
+    rev: Number(pr.getProperty('rev') || 0),
+    updatedAt: pr.getProperty('updatedAt') || '',
+    updatedBy: pr.getProperty('updatedBy') || '',
+    sheetEdited: artistSheetHash_() !== (pr.getProperty('artistHash') || ''),
+    sheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl()
+  };
+}
+
+// ---------- pull ----------
+function pull_() {
+  const m = meta_();
+  const state = readData_();
+  return Object.assign({ ok: true, state: state, rows: readArtistRows_() }, m);
+}
+
+// ---------- push ----------
+function push_(p) {
+  const m = meta_();
+  if (!p.force) {
+    // まだ一度も読み込んでいない端末（baseRevなし）は、シートが空のときだけ書き出せる
+    const stale = (p.baseRev == null || p.baseRev === '') ? m.rev > 0 : Number(p.baseRev) !== m.rev;
+    if (stale) return Object.assign({ ok: false, conflict: 'newer_rev' }, m);
+    if (m.rev > 0 && m.sheetEdited) return Object.assign({ ok: false, conflict: 'sheet_edited' }, m);
+  }
+  const state = p.state;
+  if (!state || !state.days || !state.artists) return { ok: false, error: 'bad_state' };
+  writeData_(state);
+  writeSummary_(state, p.by);
+  writeArtistSheet_(state);
+  writeTimetables_(state);
+  const rev = m.rev + 1;
+  const now = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm');
+  const pr = props_();
+  pr.setProperties({ rev: String(rev), updatedAt: now, updatedBy: String(p.by || ''), artistHash: artistSheetHash_() });
+  return Object.assign({ ok: true }, meta_());
+}
+
+// ---------- データ（非表示シート） ----------
+function sheet_(name) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+function writeData_(state) {
+  const sh = sheet_(DATA_SHEET);
+  sh.clear();
+  const json = JSON.stringify(state);
+  const rows = [];
+  for (let i = 0; i < json.length; i += CHUNK) rows.push([json.slice(i, i + CHUNK)]);
+  if (rows.length) sh.getRange(1, 1, rows.length, 1).setNumberFormat('@').setValues(rows);
+  if (!sh.isSheetHidden()) sh.hideSheet();
+}
+function readData_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(DATA_SHEET);
+  if (!sh || sh.getLastRow() < 1) return null;
+  const vals = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+  try { return JSON.parse(vals.map(function (r) { return r[0]; }).join('')); } catch (e) { return null; }
+}
+
+// ---------- 概要 ----------
+function writeSummary_(state, by) {
+  const sh = sheet_(SUMMARY_SHEET);
+  sh.clear();
+  const ev = state.event || {};
+  const now = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm');
+  const rows = [
+    ['CueFes 共有シート', ''],
+    ['イベント名', ev.name || ''],
+    ['会場', ev.venue || ''],
+    ['開催日', (state.days || []).map(function (d) { return d.label + (d.date ? '（' + d.date + '）' : ''); }).join(' / ')],
+    ['出演組数', String(uniqueNames_(state.artists).length)],
+    ['最終更新', now + (by ? '（' + by + '）' : '')],
+    ['', ''],
+    ['このシートの使い方', '「出演者一覧」は編集OK → CueFesの「シートから読み込む」で反映。「ライブ」「特典会」のタイテは書き出すたびに作り直されます。']
+  ];
+  sh.getRange(1, 1, rows.length, 2).setNumberFormat('@').setValues(rows);
+  sh.getRange(1, 1).setFontSize(14).setFontWeight('bold');
+  sh.getRange(2, 1, rows.length - 1, 1).setFontWeight('bold').setFontColor('#5E5C57');
+  sh.setColumnWidth(1, 140); sh.setColumnWidth(2, 520);
+  sh.getRange(8, 2).setWrap(true);
+  SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);
+  SpreadsheetApp.getActiveSpreadsheet().moveActiveSheet(1);
+}
+function uniqueNames_(artists) {
+  const seen = {};
+  (artists || []).forEach(function (a) { if (a.name) seen[a.name] = 1; });
+  return Object.keys(seen);
+}
+
+// ---------- 出演者一覧（編集可能） ----------
+function nameOf_(list, id) { const x = (list || []).filter(function (o) { return o.id === id; })[0]; return x ? x.name : ''; }
+function writeArtistSheet_(state) {
+  const sh = sheet_(ARTIST_SHEET);
+  sh.clear();
+  const dayOrder = {};
+  (state.days || []).forEach(function (d, i) { dayOrder[d.id] = i; });
+  const artists = (state.artists || []).slice().sort(function (a, b) {
+    const da = dayOrder[a.dayId] == null ? 99 : dayOrder[a.dayId];
+    const db = dayOrder[b.dayId] == null ? 99 : dayOrder[b.dayId];
+    if (da !== db) return da - db;
+    return toMin_(a.liveStart || a.tokutenStart) - toMin_(b.liveStart || b.tokutenStart);
+  });
+  const rows = artists.map(function (a) {
+    return [a.id, nameOf_(state.days.map(function (d) { return { id: d.id, name: d.label }; }), a.dayId), a.name || '',
+      nameOf_(state.stages, a.stageId), a.liveStart || '', a.liveEnd || '',
+      nameOf_(state.tokutenSpots, a.tokutenSpotId), a.tokutenStart || '', a.tokutenEnd || '',
+      nameOf_(state.greenRooms, a.greenRoomId), a.callTime || '', a.memo || ''];
+  });
+  const all = [ARTIST_HEADERS].concat(rows);
+  const range = sh.getRange(1, 1, all.length, ARTIST_HEADERS.length);
+  range.setNumberFormat('@').setValues(all);
+  sh.getRange(1, 1, 1, ARTIST_HEADERS.length).setFontWeight('bold').setBackground('#1F1F1F').setFontColor('#FFFFFF');
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, Math.max(all.length, 2), 1).setFontColor('#9A978F');
+  sh.getRange(1, 1).setNote('IDは変更しないでください。新しい出演者はIDを空欄にして行を追加すると、読み込み時に追加されます。');
+  sh.setColumnWidth(1, 90); sh.setColumnWidth(3, 200); sh.setColumnWidth(12, 260);
+  // 選択肢（入力ミス防止）
+  const listRule = function (names) {
+    return names.length ? SpreadsheetApp.newDataValidation().requireValueInList(names, true).setAllowInvalid(true).build() : null;
+  };
+  const n = Math.max(rows.length + 50, 60);
+  const setRule = function (col, names) { const r = listRule(names); if (r) sh.getRange(2, col, n, 1).setDataValidation(r); };
+  setRule(2, (state.days || []).map(function (d) { return d.label; }));
+  setRule(4, (state.stages || []).map(function (s) { return s.name; }));
+  setRule(7, (state.tokutenSpots || []).map(function (s) { return s.name; }));
+  setRule(10, (state.greenRooms || []).map(function (s) { return s.name; }));
+  sh.getRange(2, 5, n, 2).setNumberFormat('@');
+  sh.getRange(2, 8, n, 2).setNumberFormat('@');
+  sh.getRange(2, 11, n, 1).setNumberFormat('@');
+}
+function readArtistRows_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ARTIST_SHEET);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const vals = sh.getRange(1, 1, sh.getLastRow(), ARTIST_HEADERS.length).getDisplayValues();
+  const head = vals[0];
+  return vals.slice(1).filter(function (r) { return r.join('').trim() !== ''; }).map(function (r) {
+    const o = {};
+    head.forEach(function (h, i) { o[h] = String(r[i] == null ? '' : r[i]).trim(); });
+    return o;
+  });
+}
+function artistSheetHash_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ARTIST_SHEET);
+  if (!sh || sh.getLastRow() < 1) return '';
+  const vals = sh.getRange(1, 1, sh.getLastRow(), ARTIST_HEADERS.length).getDisplayValues();
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(vals), Utilities.Charset.UTF_8);
+  return Utilities.base64Encode(bytes);
+}
+
+// ---------- タイテ（時間×ステージの見やすい表） ----------
+function toMin_(t) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ''));
+  return m ? Number(m[1]) * 60 + Number(m[2]) : 99999;
+}
+function fmt_(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+function writeTimetables_(state) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const wanted = {};
+  (state.days || []).forEach(function (day) {
+    const live = buildGrid_(state, day, 'live');
+    const tok = buildGrid_(state, day, 'tokuten');
+    if (live) { renderGrid_(LIVE_PREFIX + day.label, live, day, 'ライブ'); wanted[LIVE_PREFIX + day.label] = 1; }
+    if (tok) { renderGrid_(TOKUTEN_PREFIX + day.label, tok, day, '特典会'); wanted[TOKUTEN_PREFIX + day.label] = 1; }
+  });
+  ss.getSheets().forEach(function (sh) {
+    const n = sh.getName();
+    if ((n.indexOf(LIVE_PREFIX) === 0 || n.indexOf(TOKUTEN_PREFIX) === 0) && !wanted[n] && ss.getSheets().length > 1) ss.deleteSheet(sh);
+  });
+}
+function buildGrid_(state, day, kind) {
+  const laneKey = kind === 'live' ? 'stageId' : 'tokutenSpotId';
+  const sKey = kind === 'live' ? 'liveStart' : 'tokutenStart';
+  const eKey = kind === 'live' ? 'liveEnd' : 'tokutenEnd';
+  const items = (state.artists || []).filter(function (a) {
+    return a.dayId === day.id && a[laneKey] && toMin_(a[sKey]) < 99999 && toMin_(a[eKey]) < 99999;
+  });
+  // その日に非表示のステージ/会場は除外（ただし出演者が割り当てられていれば表示）
+  const hidden = (kind === 'live' ? day.hiddenStageIds : day.hiddenTokutenIds) || [];
+  const lanes = ((kind === 'live' ? state.stages : state.tokutenSpots) || []).filter(function (l) {
+    return hidden.indexOf(l.id) < 0 || items.some(function (a) { return a[laneKey] === l.id; });
+  });
+  if (!items.length || !lanes.length) return null;
+  let start = Math.min.apply(null, items.map(function (a) { return toMin_(a[sKey]); }));
+  let end = Math.max.apply(null, items.map(function (a) { return toMin_(a[eKey]); }));
+  start = Math.floor(start / 30) * 30; end = Math.ceil(end / 30) * 30;
+  return { lanes: lanes, items: items, start: start, end: end, laneKey: laneKey, sKey: sKey, eKey: eKey };
+}
+function renderGrid_(name, g, day, kindLabel) {
+  const sh = sheet_(name);
+  sh.clear();
+  const maxR = sh.getMaxRows(), maxC = sh.getMaxColumns();
+  sh.getRange(1, 1, maxR, maxC).breakApart();
+  const slots = (g.end - g.start) / SLOT_MIN;
+  const cols = g.lanes.length + 1;
+  const rowsNeeded = slots + 2;
+  if (maxR < rowsNeeded) sh.insertRowsAfter(maxR, rowsNeeded - maxR);
+  if (maxC < cols) sh.insertColumnsAfter(maxC, cols - maxC);
+
+  const values = [], bgs = [];
+  values.push([day.label + (day.date ? ' ' + day.date : '') + ' ' + kindLabel + 'タイムテーブル'].concat(new Array(cols - 1).fill('')));
+  bgs.push(new Array(cols).fill('#FFFFFF'));
+  values.push(['時間'].concat(g.lanes.map(function (l) { return l.name; })));
+  bgs.push(new Array(cols).fill('#1F1F1F'));
+  for (let i = 0; i < slots; i++) {
+    const t = g.start + i * SLOT_MIN;
+    values.push([t % 30 === 0 ? fmt_(t) : ''].concat(new Array(cols - 1).fill('')));
+    bgs.push(['#F6F5F2'].concat(new Array(cols - 1).fill(t % 60 === 0 ? '#FAFAF8' : '#FFFFFF')));
+  }
+  const merges = [];
+  g.items.forEach(function (a) {
+    const c = g.lanes.map(function (l) { return l.id; }).indexOf(a[g.laneKey]);
+    if (c < 0) return;
+    const r0 = Math.max(0, Math.floor((toMin_(a[g.sKey]) - g.start) / SLOT_MIN));
+    const r1 = Math.min(slots, Math.ceil((toMin_(a[g.eKey]) - g.start) / SLOT_MIN));
+    if (r1 <= r0) return;
+    values[r0 + 2][c + 1] = a.name + '\n' + a[g.sKey] + '–' + a[g.eKey];
+    for (let r = r0; r < r1; r++) bgs[r + 2][c + 1] = /^#[0-9a-fA-F]{6}$/.test(a.color || '') ? a.color : '#FFD3DC';
+    merges.push([r0 + 3, c + 2, r1 - r0]);
+  });
+  const all = sh.getRange(1, 1, values.length, cols);
+  all.setNumberFormat('@').setValues(values).setBackgrounds(bgs)
+    .setVerticalAlignment('middle').setHorizontalAlignment('center').setFontSize(10).setWrap(true);
+  sh.getRange(1, 1, 1, cols).merge().setFontSize(13).setFontWeight('bold').setHorizontalAlignment('left');
+  sh.getRange(2, 1, 1, cols).setFontColor('#FFFFFF').setFontWeight('bold');
+  sh.getRange(3, 1, slots, 1).setFontColor('#5E5C57').setVerticalAlignment('top');
+  merges.forEach(function (m) {
+    const rg = sh.getRange(m[0], m[1], m[2], 1);
+    if (m[2] > 1) rg.merge();
+    rg.setFontWeight('bold').setBorder(true, true, true, true, false, false, '#FFFFFF', SpreadsheetApp.BorderStyle.SOLID_THICK);
+  });
+  sh.setFrozenRows(2); sh.setFrozenColumns(1);
+  sh.setColumnWidth(1, 56);
+  for (let c = 2; c <= cols; c++) sh.setColumnWidth(c, 150);
+  sh.setRowHeightsForced(3, slots, 16);
+  sh.setRowHeight(1, 30); sh.setRowHeight(2, 26);
+}
 </script>
 </body>
 </html>

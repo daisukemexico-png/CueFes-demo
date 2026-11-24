@@ -127,6 +127,11 @@
     display:flex;flex-direction:column;padding:18px;box-sizing:border-box;overflow-y:auto;
   }
   .artist-detail-panel.open{right:0;}
+  .adp-form{display:flex;flex-direction:column;gap:8px;}
+  .adp-f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);margin:0;}
+  .adp-f input,.adp-f select,.adp-f textarea{width:100%;box-sizing:border-box;font-size:14px;}
+  .adp-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .adp-admin{display:flex;flex-direction:column;gap:6px;margin-top:8px;padding:10px;border:1px dashed var(--border);border-radius:8px;font-size:12.5px;}
   .artist-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
   .artist-detail-header h3{margin:0;font-size:16px;}
   .artist-detail-header button{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;}
@@ -1268,8 +1273,8 @@
   // Date-based version string, bumped whenever a meaningful update is
   // pushed to production — simplest thing that's self-documenting without
   // needing a separate changelog to stay in sync with.
-  const APP_VERSION = "2026.11.23";
-  const APP_UPDATED_DATE = "2026年11月23日";
+  const APP_VERSION = "2026.11.24";
+  const APP_UPDATED_DATE = "2026年11月24日";
   const STORAGE_KEY = "idolfes_timetable_v2_demo";
   const STORAGE_KEY_V1 = "idolfes_timetable_v1_demo";
   const ARTIST_HISTORY_KEY = "cuefes_artist_history_v1_demo";
@@ -2709,13 +2714,16 @@
       </div>
       <div style="overflow-x:auto;">
         <table class="data" id="artistMasterTable">
-          <thead><tr><th style="width:32px;"></th><th>アーティスト名</th><th>メモ（連絡先・事務所名など）</th><th style="width:40px;"></th></tr></thead>
+          <thead><tr><th style="width:32px;"></th><th>アーティスト名</th><th>メモ（事務所名など）</th><th>担当者名</th><th>メールアドレス</th><th>電話番号</th><th style="width:40px;"></th></tr></thead>
           <tbody>
             ${rows.map(m=>`
               <tr data-id="${m.id}">
                 <td><input type="checkbox" data-role="amCheck"></td>
                 <td><input type="text" data-role="amRowName" value="${escapeAttr(m.name)}"></td>
                 <td><input type="text" data-role="amRowMemo" value="${escapeAttr(m.memo||"")}"></td>
+                <td><input type="text" data-role="amRowC" data-k="contactName" value="${escapeAttr(m.contactName||"")}"></td>
+                <td><input type="email" data-role="amRowC" data-k="email" value="${escapeAttr(m.email||"")}"></td>
+                <td><input type="tel" data-role="amRowC" data-k="phone" value="${escapeAttr(m.phone||"")}"></td>
                 <td><button class="del-btn" data-role="amRowDelete" title="マスタから削除">✕</button></td>
               </tr>`).join("")}
           </tbody>
@@ -2737,6 +2745,10 @@
         m.memo = e.target.value.trim();
         saveArtistMaster();
       });
+      tr.querySelectorAll('[data-role=amRowC]').forEach(inp=> inp.addEventListener("change", e=>{
+        m[e.target.dataset.k] = e.target.value.trim();
+        saveArtistMaster();
+      }));
       tr.querySelector('[data-role=amRowDelete]').addEventListener("click", ()=>{
         if(!confirm(`「${m.name}」をマスタから削除します。よろしいですか？（現在のイベントに追加済みのデータには影響しません）`)) return;
         artistMaster = artistMaster.filter(x=>x.id!==id);
@@ -2969,6 +2981,7 @@
   let selectedBlockInfo = null; // {kind:"artist"|"staffTask", id}
   let lastDeletedSnapshot = null; // {kind, data}
   function clearBlockSelection(){
+    adpEditing = false;
     document.querySelectorAll(".block-selected").forEach(el=>el.classList.remove("block-selected"));
     selectedBlockInfo = null;
     closeArtistDetailPanel();
@@ -2990,6 +3003,67 @@
     const panel = document.getElementById("artistDetailPanel");
     if(panel) panel.classList.remove("open");
   }
+  // Contacts live on the artist master (by name) so they carry over to the
+  // next event; shown/edited only when admin fields are visible.
+  function masterByName(name){ name=(name||"").trim(); return name ? artistMaster.find(m=>(m.name||"").trim()===name) : null; }
+  function upsertMasterContact(name, c){
+    name=(name||"").trim(); if(!name) return;
+    let m = masterByName(name);
+    const any = c.contactName||c.email||c.phone;
+    if(!m){ if(!any) return; m = { id:uid(), name, memo:"", createdAt:Date.now() }; artistMaster.push(m); }
+    m.contactName = c.contactName||""; m.email = c.email||""; m.phone = c.phone||"";
+    saveArtistMaster();
+  }
+  let adpEditing = false;
+  function renderArtistEditForm(a){
+    const opt = (list, cur)=> `<option value="">（未定）</option>` + list.map(x=>`<option value="${x.id}" ${x.id===cur?"selected":""}>${escapeHtml(x.name)}</option>`).join("");
+    const tf = (k,label)=> `<label class="adp-f"><span>${label}</span><input type="text" inputmode="numeric" placeholder="15:05" data-adp="${k}" value="${escapeAttr(a[k]||"")}"></label>`;
+    const m = masterByName(a.name) || {};
+    const admin = adminFieldsVisible();
+    const tbOn = (()=>{ const d=byId(state.days,a.dayId); return !!(d && d.taiban && d.taiban.enabled); })();
+    return `<div class="adp-form">
+      <label class="adp-f"><span>アーティスト名</span><input type="text" data-adp="name" value="${escapeAttr(a.name)}"></label>
+      ${tbOn ? '<p class="helptext" style="margin:4px 0">このDAYは対バンモードのタイテを表示中です。時間は対バンモードの設定から自動で計算し直されるため、時間の変更は「対バンモード」タブで行ってください。</p>' : ""}
+      <label class="adp-f"><span>ステージ</span><select data-adp="stageId">${opt(state.stages, a.stageId)}</select></label>
+      <div class="adp-2">${tf("liveStart","ライブ開始")}${tf("liveEnd","ライブ終了")}</div>
+      <label class="adp-f"><span>特典会場</span><select data-adp="tokutenSpotId">${opt(state.tokutenSpots, a.tokutenSpotId)}</select></label>
+      <div class="adp-2">${tf("tokutenStart","特典会開始")}${tf("tokutenEnd","特典会終了")}</div>
+      <div class="adp-2">${tf("callTime","入り時間")}<label class="adp-f"><span>楽屋</span><select data-adp="greenRoomId">${opt(state.greenRooms, a.greenRoomId)}</select></label></div>
+      <label class="adp-f"><span>メモ</span><textarea data-adp="memo" rows="2">${escapeHtml(a.memo||"")}</textarea></label>
+      ${admin ? `<div class="adp-admin"><b>担当者の連絡先（管理者のみ表示）</b>
+        <label class="adp-f"><span>担当者名</span><input type="text" data-adpc="contactName" value="${escapeAttr(m.contactName||"")}"></label>
+        <label class="adp-f"><span>メールアドレス</span><input type="email" data-adpc="email" value="${escapeAttr(m.email||"")}"></label>
+        <label class="adp-f"><span>電話番号</span><input type="tel" data-adpc="phone" value="${escapeAttr(m.phone||"")}"></label>
+        <span class="helptext" style="margin:0">アーティストマスタに保存され、次のイベントでも使えます。</span></div>` : ""}
+      <div class="row" style="gap:8px;margin-top:12px"><button type="button" class="btn" id="adpSave">保存する</button><button type="button" class="btn secondary" id="adpCancel">やめる</button></div>
+      <p class="helptext" id="adpErr" style="color:var(--danger);margin:6px 0 0"></p>
+    </div>`;
+  }
+  function saveArtistFromPanel(a){
+    const body = document.getElementById("adpBody");
+    const v = k=>{ const el = body.querySelector('[data-adp="'+k+'"]'); return el ? el.value.trim() : ""; };
+    const times = {};
+    for(const k of ["liveStart","liveEnd","tokutenStart","tokutenEnd","callTime"]){
+      const raw = v(k);
+      if(!raw){ times[k]=""; continue; }
+      const n = (typeof tbNormTime==="function" ? tbNormTime(raw) : normalizeTypedTime(raw));
+      if(!n){ document.getElementById("adpErr").textContent = "時刻の形式を確認してください（例：15:05）"; return; }
+      times[k]=n;
+    }
+    const oldName = a.name;
+    a.name = v("name") || a.name;
+    a.stageId = v("stageId"); a.tokutenSpotId = v("tokutenSpotId"); a.greenRoomId = v("greenRoomId");
+    Object.assign(a, times);
+    a.memo = v("memo");
+    syncDurationFromTimes(a, "live"); syncDurationFromTimes(a, "tokuten");
+    if(adminFieldsVisible()){
+      const c = {}; body.querySelectorAll("[data-adpc]").forEach(el=>{ c[el.dataset.adpc]=el.value.trim(); });
+      if(oldName!==a.name){ const m = masterByName(oldName); if(m && !masterByName(a.name)) m.name = a.name; }
+      upsertMasterContact(a.name, c);
+    }
+    adpEditing = false;
+    saveState(); renderAll();
+  }
   function renderArtistDetailPanel(a){
     const panel = document.getElementById("artistDetailPanel");
     if(!panel) return;
@@ -3010,14 +3084,26 @@
       ["楽屋", greenRoomNm + (greenRoomAddr ? "（"+greenRoomAddr+"）" : "")],
       ["メモ", a.memo || "（なし）"],
     ];
+    const mc = masterByName(a.name);
+    if(adminFieldsVisible() && mc && (mc.contactName||mc.email||mc.phone)){
+      rows.push(["担当者", [mc.contactName, mc.email, mc.phone].filter(Boolean).join("\n")]);
+    }
     if(adminFieldsVisible()){
       rows.push(["動員数", a.audience || "（未入力）"]);
       rows.push(["チケット売上", a.ticketSales || "（未入力）"]);
       rows.push(["イベンター好感度", a.favorability || "（未入力）"]);
     }
-    document.getElementById("adpBody").innerHTML = rows.map(([label,val])=>
-      `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(val).replace(/\n/g,"<br>")}</dd>`
-    ).join("");
+    const body = document.getElementById("adpBody");
+    if(adpEditing){
+      body.innerHTML = renderArtistEditForm(a);
+      document.getElementById("adpSave").addEventListener("click", ()=> saveArtistFromPanel(a));
+      document.getElementById("adpCancel").addEventListener("click", ()=>{ adpEditing=false; renderArtistDetailPanel(a); });
+    } else {
+      body.innerHTML = rows.map(([label,val])=>
+        `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(val).replace(/\n/g,"<br>")}</dd>`
+      ).join("") + `<div style="margin-top:16px"><button type="button" class="btn" id="adpEdit">この出演者を編集する</button></div>`;
+      document.getElementById("adpEdit").addEventListener("click", ()=>{ adpEditing=true; renderArtistDetailPanel(a); });
+    }
     panel.classList.add("open");
   }
   function isTypingInField(){
@@ -3744,7 +3830,8 @@
     merchMode:"auto", merchOffset:5, merchDur:60, postTarget:0, postOffset:10, roomBefore:60, roomAfter:10, defaultDur:25 };
   let taibanDayId = null;
   function tbSettings(day){
-    day.taiban = Object.assign({}, TB_DEFAULTS, day.taiban||{});
+    if(!day.taiban || typeof day.taiban!=="object") day.taiban = {};
+    Object.keys(TB_DEFAULTS).forEach(k=>{ if(!(k in day.taiban)) day.taiban[k] = TB_DEFAULTS[k]; });
     return day.taiban;
   }
   function tbOrdered(dayId){
@@ -3840,6 +3927,29 @@
     if(m && +m[1]<=29 && +m[2]<=59) return m[1].padStart(2,"0")+":"+m[2];
     return null;
   }
+  // Each day keeps two timetables: the one built by hand and the 対バン one.
+  // Whichever is shown lives in the normal fields (so every tab/output uses
+  // it); the other is parked on the artist as manualTT / taibanTT.
+  const TT_FIELDS = ["stageId","liveStart","liveEnd","durationMin","changeoverMin","tokutenSpotId","tokutenStart","tokutenEnd","tokutenDurationMin","callTime","roomStart","roomEnd"];
+  function ttSnap(a){ const o={}; TT_FIELDS.forEach(k=>{ o[k]=a[k]||""; }); return o; }
+  function ttApply(a,o){ TT_FIELDS.forEach(k=>{ a[k]=o[k]||""; }); }
+  function setTaibanEnabled(dayId, on){
+    const day = byId(state.days, dayId); if(!day) return;
+    const s = tbSettings(day);
+    if(!!s.enabled === !!on) return;
+    const acts = state.artists.filter(a=>a.dayId===dayId);
+    if(on){
+      acts.forEach(a=>{ a.manualTT = ttSnap(a); });
+      if(s.hasTaibanTT){ acts.forEach(a=>{ if(a.taibanTT) ttApply(a, a.taibanTT); }); }
+      else tbAdoptExisting(day);
+      s.enabled = true; s.hasTaibanTT = true;
+      recomputeTaiban(dayId);
+    } else {
+      acts.forEach(a=>{ a.taibanTT = ttSnap(a); if(a.manualTT) ttApply(a, a.manualTT); });
+      s.enabled = false;
+    }
+    saveState(); renderAll();
+  }
   function tbChanged(dayId){ recomputeTaiban(dayId); saveState(); renderAll(); }
   function taibanText(day){
     const s = tbSettings(day);
@@ -3894,9 +4004,9 @@
       <p class="helptext">出演順と持ち時間を並べるだけで、出演時間・物販・終演後物販・楽屋の時間が自動で決まります。できあがった時間は④ライブTT・⑤特典会TT・PDF出力・出演者連絡シート・当日モードにそのまま反映されます。</p>
       <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap">
         <label style="width:auto;margin:0">DAY <select id="tbDay">${state.days.map(d=>`<option value="${d.id}" ${d.id===day.id?"selected":""}>${escapeHtml(d.label)}${d.date?"（"+escapeHtml(d.date)+"）":""}</option>`).join("")}</select></label>
-        <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:bold;color:var(--text)"><input type="checkbox" id="tbEnabled" ${s.enabled?"checked":""} style="width:auto">このDAYを対バンモードにする</label>
+        <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:bold;color:var(--text)"><input type="checkbox" id="tbEnabled" ${s.enabled?"checked":""} style="width:auto">このDAYは対バンモードのタイテを表示する</label>
       </div>
-      ${s.enabled ? "" : '<p class="helptext" style="margin-top:10px">チェックを入れると、今のタイムテーブル（出演順・開演時刻・各組の持ち時間・組と組の間の空き）をそのまま引き継いで、以降は下の設定から自動計算します。物販と楽屋の時間はルールに沿って計算し直されます。④⑤でドラッグした時間は、設定を変えたときに計算し直されます。</p>'}
+      ${s.enabled ? "" : '<p class="helptext" style="margin-top:10px">このDAYには「自分で組んだタイテ」と「対バンモードのタイテ」を別々に保存できます。チェックで表示を切り替えても、もう一方は消えません。初めてチェックを入れたときは、今のタイムテーブル（出演順・開演時刻・各組の持ち時間・組と組の間の空き）を引き継いで対バンモードのタイテを作り、以降は下の設定から自動計算します。物販と楽屋の時間はルールに沿って計算し直されます。④⑤でドラッグした時間は、設定を変えたときに計算し直されます。</p>'}
     </div>`;
     if(s.enabled){
       html += `<div class="card"><h2>進行のルール</h2><div class="tb-settings">
@@ -3961,11 +4071,7 @@
       const el = e.target, day = curDay(); if(!day) return;
       const s = tbSettings(day);
       if(el.id==="tbDay"){ taibanDayId = el.value; renderTaibanTab(); return; }
-      if(el.id==="tbEnabled"){
-        s.enabled = el.checked;
-        if(s.enabled){ tbAdoptExisting(day); recomputeTaiban(day.id); }
-        saveState(); renderAll(); return;
-      }
+      if(el.id==="tbEnabled"){ setTaibanEnabled(day.id, el.checked); return; }
       if(el.dataset.tbset){ const k=el.dataset.tbset; s[k] = (k==="stageId"||k==="merchMode") ? el.value : parseInt(el.value,10); return tbChanged(day.id); }
       if(el.dataset.tbtime){ const v = tbNormTime(el.value); if(v==null && el.value.trim()){ el.value = s[el.dataset.tbtime]||""; return; } s[el.dataset.tbtime] = v||""; return tbChanged(day.id); }
       const row = el.closest("[data-tbid]");
@@ -4307,7 +4413,13 @@
       statusHtml += `<div class="buffer-banner">注意：ライブ⇔特典会の移動時間が足りていない可能性があるアーティストがいます: ${escapeHtml(state.artists.filter(a=>moveIssues.warningIds.has(a.id)).map(a=>a.name).join("、"))}</div>`;
     }
     const sub = day.date ? (" ・ "+day.date) : "";
-    section.innerHTML = `<h2>${escapeHtml(day.label)}${escapeHtml(sub)} － ${label}</h2>` + statusHtml +
+    const tbOn = !!(day.taiban && day.taiban.enabled);
+    const ttSwitch = `<div class="row" style="gap:6px;margin:-4px 0 10px;flex-wrap:wrap;align-items:center">
+      <span class="helptext" style="margin:0">表示するタイテ：</span>
+      <button type="button" class="btn ${tbOn?"secondary":""}" data-ttswitch="manual" data-day="${day.id}" style="padding:6px 12px;font-size:12.5px">自分で組んだタイテ</button>
+      <button type="button" class="btn ${tbOn?"":"secondary"}" data-ttswitch="taiban" data-day="${day.id}" style="padding:6px 12px;font-size:12.5px">対バンモードのタイテ</button>
+    </div>`;
+    section.innerHTML = `<h2>${escapeHtml(day.label)}${escapeHtml(sub)} － ${label}</h2>` + ttSwitch + statusHtml +
       `<div class="helptext">枠をドラッグすると時間の移動、隣の${laneWord}列へのドラッグで${laneWord}の変更ができます。枠の上下端をドラッグすると尺（長さ）を変更できます（いずれも5分刻み）。Alt（Windows）／Option（Mac）キーを押しながらドラッグすると、その枠を複製できます（2回出演するアーティストなどに便利です）。</div>` +
       ganttZoomBarHtml() + `<div class="gantt-v-wrap"></div>`;
     renderGanttInto(section.querySelector(".gantt-v-wrap"), kind, day.id, Object.assign({useZoom:true}, opts));
@@ -5921,6 +6033,11 @@
     });
   }
   document.getElementById("adpClose").addEventListener("click", clearBlockSelection);
+  document.addEventListener("click", e=>{
+    const b = e.target.closest && e.target.closest("[data-ttswitch]");
+    if(!b) return;
+    setTaibanEnabled(b.dataset.day, b.dataset.ttswitch==="taiban");
+  });
   document.getElementById("btnAppInfo").addEventListener("click", ()=>{
     document.getElementById("appInfoVersion").textContent = APP_VERSION;
     document.getElementById("appInfoDate").textContent = APP_UPDATED_DATE;
